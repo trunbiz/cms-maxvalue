@@ -43,22 +43,22 @@ class ChapterImportController extends Controller
 
         return Cache::lock($key.'.lock', 300)->block(5, function () use ($key, $service) {
             $data = Cache::get($key);
-            abort_unless($data, 419, 'Bản xem trước đã hết hạn hoặc đã được nhập.');
+            abort_unless($data, 419, 'This preview has expired or has already been imported.');
             $series = $service->import($data['preview'], $data['options']);
             Cache::forget($key);
 
-            return redirect('/admin/posts?series_id='.$series->id)->with('success', 'Đã nhập các chương thành công.');
+            return redirect('/admin/posts?series_id='.$series->id)->with('success', 'Chapters imported successfully.');
         });
     }
 
     public function bulkDelete(BulkDeleteRequest $request, ResourceService $service)
     {
         $posts = Post::select(['id', 'image', 'series_id'])->where('series_id', $request->integer('series_id'))->whereIn('id', $request->validated('ids'))->get();
-        abort_unless($posts->count() === count($request->validated('ids')), 422, 'Chương không thuộc truyện đã chọn.');
+        abort_unless($posts->count() === count($request->validated('ids')), 422, 'A selected chapter does not belong to this story.');
         foreach ($posts as $post) {
             $service->delete('posts', $post, $request->user());
         }
 
-        return back()->with('success', 'Đã xóa các chương đã chọn.');
+        return back()->with('success', 'Selected chapters deleted.');
     }
 }

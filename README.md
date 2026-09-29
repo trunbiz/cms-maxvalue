@@ -1,19 +1,20 @@
-# Góc đọc — Laravel 10 CMS
+# Reading Corner — Laravel 10 publishing CMS
 
-Website đọc truyện tiếng Việt với CMS, phân quyền theo module, nhập nhiều chương, media local/Cloudflare R2 và cache Redis.
+An English-language reading website and CMS built with Laravel 10, PHP 8.1, MySQL 8, Redis, Blade, Bootstrap 5.3, Vite, vanilla JavaScript, SortableJS, and CKEditor 5. Fonts are self-hosted through npm.
 
-## Chạy ở máy hiện tại
+## Open the local application
 
 - Website: http://127.0.0.1:8010
-- Quản trị: http://127.0.0.1:8010/admin
-- Tài khoản seed: **admin / admin123**. Đổi mật khẩu khi đưa lên môi trường thật.
-- PHP 8.1 tại `C:\OpenServer\modules\php\PHP_8.1\php.exe`.
-- Composer tại `C:\OpenServer\userdata\composer\composer.phar`.
-- MySQL 8 và Redis phải đang chạy. Thông tin kết nối nằm trong `.env`, không đưa vào Git.
+- Administration: http://127.0.0.1:8010/admin
+- Write an article: http://127.0.0.1:8010/admin/posts/create
+- Publisher profile and AdSense preparation: http://127.0.0.1:8010/admin/settings
+- Seed login: **admin / admin123**. Change the password before production.
 
-PowerShell:
+The local PHP executable is at C:\OpenServer\modules\php\PHP_8.1\php.exe. Composer is at C:\OpenServer\userdata\composer\composer.phar. MySQL and Redis must be running.
 
-```powershell
+## Install and run
+
+~~~powershell
 $env:Path = 'C:\OpenServer\modules\php\PHP_8.1;' + $env:Path
 php C:\OpenServer\userdata\composer\composer.phar install
 npm ci
@@ -21,93 +22,74 @@ php artisan migrate --seed
 php artisan storage:link
 npm run build
 php artisan serve --host=127.0.0.1 --port=8010
-```
+~~~
 
-Nếu dùng domain OpenServer, đặt document root vào `public/` và chỉnh `APP_URL` trong `.env` thành domain đó, rồi chạy `php artisan config:clear`.
+For an existing installation, run migrations without reseeding, then run the idempotent English preparation command:
 
-Để tạo lại **toàn bộ dữ liệu mẫu** trong database phát triển:
+~~~bash
+php artisan migrate
+php artisan site:prepare-english
+~~~
 
-```powershell
-php artisan migrate:fresh --seed
-```
+This preserves authored content, converts unchanged legacy examples into English drafts, and creates missing publication pages. Policy pages remain drafts until the publisher profile and a content review are complete. Use the CMS to publish your own original work.
 
-Lệnh này xóa các bảng hiện có. Seeder tạo 1 Super Admin, 3 danh mục, 10 thẻ, 5 truyện × 30 chương, 5 bài viết, 2 trang và 2 menu.
+If you use an OpenServer domain, set its document root to public/ and update APP_URL in .env. Keep .env out of Git.
 
-## Chức năng
+## Publishing and AdSense
 
-1. Database, factory, seeder; đăng nhập username; quyền `dashboard`, `users`, `roles`, `categories`, `tags`, `posts`, `pages`, `menus`, `settings`. Truyện và nhập chương thuộc module `posts`.
-2. MediaService resize tối đa 1200px, chuyển WebP; đường dẫn tương đối; upload CKEditor; chuyển media sang R2 và kiểm tra kết nối.
-3. CMS Bootstrap 5.3 responsive, dashboard, CRUD người dùng/quyền. Bảo vệ Super Admin, tài khoản cuối cùng và tài khoản đang đăng nhập.
-4. CRUD danh mục, thẻ, trang; logo, favicon, ads.txt, HTML head riêng cho Super Admin; menu nhiều cấp bằng SortableJS.
-5. CRUD truyện/bài/chương, xóa nhiều chương theo truyện; nhập HTML hoặc văn bản; xem trước; bỏ qua/ghi đè chương trùng; lưu transaction theo lô; bảo vệ ảnh dùng chung.
-6. Frontend mobile, tìm kiếm FULLTEXT, sitemap, canonical/Open Graph/JSON-LD. Literata và Be Vietnam Pro tự host; ba giao diện đọc, cỡ chữ 16–24px, độ rộng dòng, phím mũi tên, tiến độ và lịch sử localStorage.
-7. Response cache Redis trên các trang HTML; frontend không tạo session/cookie và không phụ thuộc tài khoản. Cloudflare purge qua queue, tối đa 30 URL/request. Redis INCR, chống lặp cùng thiết bị/IP trong 60 giây, ghi dồn SQL mỗi 10 phút với batch id chống ghi trùng khi gián đoạn.
+Read [the publication and AdSense setup guide](docs/ADSENSE_SETUP.md) before launch. Six editable policy pages are prepared: About, Contact, Privacy Policy, Terms of Use, Editorial Policy, and Copyright & Corrections.
 
-## Nhập chương
+Articles support drafts, authenticated previews, author names, publication dates, featured images, SEO metadata, Article JSON-LD, tags, and related reading. AdSense settings generate ownership verification and ads.txt from your own Publisher ID. No advertisements or tracking scripts are enabled automatically, and no application is submitted automatically.
 
-Vào **Nhập nhiều chương**, dán nội dung dạng:
+The application is prepared for publishing; Google approval requires a real public site with appropriate original content and accurate policies. A localhost URL and demo drafts are not ready for submission.
 
-```text
-Tên truyện mới
-Mô tả truyện
-CHAPTER 1 - Khởi đầu
-Nội dung chương một.
-Chapter 2 – Hành trình
-Nội dung chương hai.
-CHAPTER 3: Trở về
-Nội dung chương ba.
-```
+## Media and Cloudflare R2
 
-Chọn truyện có sẵn nếu muốn nhập tiếp. Khi cập nhật mô tả truyện đã có, toàn bộ phần trước dòng CHAPTER đầu tiên được dùng làm mô tả. Bản xem trước có hiệu lực một giờ và chỉ tài khoản đã tạo mới có thể xác nhận. Giới hạn mỗi lần nhập: 2.000 chương, 5 triệu ký tự, ảnh 5MB/40 triệu pixel.
+All uploaded images pass through MediaService, are resized to a maximum width of 1200px, and converted to WebP. The database stores relative paths. Inline images use /media/ path markers, resolved by media_url() at render time. External pasted images are removed on save; upload permitted images through the editor instead.
 
-Ảnh trong nội dung được lưu dạng `/media/{đường-dẫn-tương-đối}` và chuyển thành URL bằng `media_url()` khi hiển thị. Ảnh từ nguồn ngoài bị loại khi lưu; dùng nút upload trong CKEditor để đưa ảnh qua MediaService.
+Local storage uses MEDIA_DISK=public. For R2, fill in the R2 variables in .env.example, configure the bucket public domain, then run:
 
-## Cloudflare R2
-
-Local sử dụng `MEDIA_DISK=public` và `CLOUDFLARE_PURGE_ENABLED=false`.
-
-Production cần bucket, custom domain và các biến `R2_*` trong `.env.example`. Mọi cấu hình ứng dụng Cloudflare đi qua `config('cloudflare.*')`; disk R2 được cấu hình ở `config/filesystems.php`.
-
-```bash
+~~~bash
 php artisan config:clear
 php artisan r2:test
 php artisan media:migrate-to-r2
-```
+~~~
 
-Lệnh chuyển media bỏ qua file đích đã tồn tại và giữ nguyên file local. Sau khi kiểm tra thành công, đặt `MEDIA_DISK=r2`. Hiện `.env` chưa có thông tin R2, nên kết nối dịch vụ thật chưa được xác minh.
+The migration command skips existing R2 objects and keeps local files. Switch MEDIA_DISK to r2 after checking the result. Live R2 connectivity has not been verified because credentials are not configured.
 
-Muốn purge Cloudflare, điền Zone ID và API token, bật `CLOUDFLARE_PURGE_ENABLED=true`. Chạy worker:
+## Cache, queue, and view counts
 
-```bash
+Public HTML is shared for all readers and does not require a session cookie. Settings, menus, and categories are cached. Admin changes invalidate response caches and queue Cloudflare URL purges when enabled. Use distinct Redis/cache prefixes for each project.
+
+~~~bash
 php artisan queue:work redis --tries=3 --timeout=300
-```
-
-Các URL frontend đã truy cập được ghi nhận để xóa cả trang chi tiết, trang danh sách/phân trang và slug cũ khi nội dung thay đổi. Cloudflare tự chia lô 30 URL; lỗi được retry qua queue.
-
-## Scheduler và cache
-
-Chạy local:
-
-```bash
 php artisan schedule:work
-```
+~~~
 
-Production chạy `php artisan schedule:run` mỗi phút qua cron/Task Scheduler. Tác vụ `views:flush` chạy mỗi 10 phút. Có thể chạy thủ công bằng `php artisan views:flush`.
+In production, invoke schedule:run every minute with cron or Task Scheduler. View counts accumulate in Redis and flush every ten minutes. A database batch identifier prevents double-counting when a flush is retried after a crash.
 
-`CACHE_PREFIX` và `REDIS_PREFIX` riêng giúp không đụng dữ liệu Redis của dự án khác. Debugbar chỉ bật ở local qua `DEBUGBAR_ENABLED=true`; frontend tắt thanh debug để giữ HTML giống nhau và không đưa thông tin debug vào cache. Kiểm tra số truy vấn frontend bằng Feature test.
+Debugbar can be enabled in local administration with DEBUGBAR_ENABLED=true. It is disabled on public pages to avoid putting debug data into shared HTML.
 
-## Kiểm thử
+## Chapter import
 
-```bash
+The importer accepts plain text and editor HTML, with headings such as CHAPTER 1 - Title, Chapter 2 – Title, or Chapter 3: Title. For a new story, put its title on the first line and its description before the first chapter. Existing stories can receive new chapters with skip/overwrite duplicate handling.
+
+A user-scoped preview must be confirmed before insertion. Each import is transactional and uses batch inserts. Preview lifetime: one hour. Limits: 2,000 chapters, five million characters, image size 5MB and 40 million pixels. Featured images shared by multiple records are retained until no record uses them.
+
+## Verification
+
+~~~bash
 php artisan test
 php vendor/bin/pint --test
 npm run build
 php artisan route:cache
 php artisan route:clear
-```
+~~~
 
-Feature test dùng SQLite in-memory, không đụng database `.env`. Test lượt xem dùng Redis thật với tiền tố UUID riêng, tự dọn key và sẽ báo skipped nếu Redis không có sẵn. Có test nhập 300 chương, transaction rollback, HTML/soft-break, trùng chương, phân quyền, media dùng chung, menu vòng lặp, cache, không có cookie frontend và phục hồi batch lượt xem.
+Tests use SQLite in memory. Redis integration tests use isolated UUID prefixes and report skipped if Redis is unavailable. Coverage includes permissions, chapter parsing and rollback, media, menu nesting, shared caching, public metadata, policy publication, AdSense verification, old URL redirects, and view-count recovery.
 
-PHP dependencies khóa theo PHP 8.1.1. npm audit hiện không có cảnh báo; Composer audit vẫn báo advisory của Laravel 10 theo phiên bản bắt buộc của dự án. Chưa kiểm tra trực quan qua Browser vì phiên làm việc không có trình duyệt khả dụng.
+Use migrate:fresh --seed only on a disposable development database: it deletes existing tables. Fresh seeds contain 155 demo posts/chapters as drafts, five draft stories, three categories, ten tags, and six policy drafts.
 
-Danh sách file tạo/sửa: [docs/FILES_CHANGED.md](docs/FILES_CHANGED.md).
+PHP dependencies are resolved for PHP 8.1.1. Laravel 10 is retained as required; Composer audit reports framework advisories for this version. Browser visual verification was unavailable in the tool environment; HTTP and Feature tests were used.
+
+Changes for the English publishing update are listed in [docs/ENGLISH_CHANGES.md](docs/ENGLISH_CHANGES.md).

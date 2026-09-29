@@ -25,11 +25,11 @@ class ChapterImportService
                 }
                 $number = (int) $match[1];
                 if ($number < 1 || $number > 1000000) {
-                    $this->fail('Số chương phải từ 1 đến 1.000.000.');
+                    $this->fail('Chapter numbers must be between 1 and 1,000,000.');
                 }
                 $current = ['number' => $number, 'title' => trim($match[2]), 'content' => ''];
                 if (mb_strlen($current['title']) > 255) {
-                    $this->fail('Tiêu đề chương quá dài.');
+                    $this->fail('The chapter title is too long.');
                 }
             } elseif ($current !== null) {
                 $current['content'] .= $html;
@@ -41,15 +41,15 @@ class ChapterImportService
             $chapters[] = $current;
         }
         if (! $chapters) {
-            $this->fail('Không tìm thấy dòng CHAPTER X - Tiêu đề.');
+            $this->fail('No CHAPTER X - Title heading was found.');
         }
         if (count($chapters) > 2000) {
-            $this->fail('Mỗi lần nhập tối đa 2.000 chương.');
+            $this->fail('You can import up to 2,000 chapters at a time.');
         }
         $series = $seriesId ? Series::select(['id', 'title', 'description'])->findOrFail($seriesId) : null;
         $title = $series?->title ?? trim(html_entity_decode(strip_tags(array_shift($intro) ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         if ($title === '' || mb_strlen($title) > 255) {
-            $this->fail('Dòng đầu tiên trước CHAPTER phải là tên truyện (tối đa 255 ký tự).');
+            $this->fail('The first line before CHAPTER must be the story title (up to 255 characters).');
         }
         $description = trim(html_entity_decode(strip_tags(implode("\n", $intro)), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         $existing = $series ? $series->chapters()->pluck('chapter_number')->all() : [];
@@ -61,16 +61,16 @@ class ChapterImportService
             $chapter['words'] = preg_match_all('/[\p{L}\p{N}]+/u', strip_tags($chapter['content']));
             $chapter['existing'] = in_array($number, $existing, true);
             if ($chapter['existing']) {
-                $warnings[] = "Chương $number đã tồn tại trong truyện.";
+                $warnings[] = "Chapter $number already exists in this story.";
             }
             if (isset($seen[$number])) {
-                $warnings[] = "Chương $number xuất hiện nhiều lần trong nội dung nhập.";
+                $warnings[] = "Chapter $number appears more than once in this import.";
             }
             if ($previous !== null && $number !== $previous + 1) {
-                $warnings[] = "Thứ tự chương không liên tục: $previous → $number.";
+                $warnings[] = "Non-consecutive chapter numbers: $previous → $number.";
             }
             if ($chapter['words'] === 0) {
-                $warnings[] = "Chương $number chưa có nội dung.";
+                $warnings[] = "Chapter $number has no content.";
             }
             $seen[$number] = true;
             $previous = $number;
@@ -139,7 +139,7 @@ class ChapterImportService
     public function import(array $preview, array $options): Series
     {
         $series = DB::transaction(function () use ($preview, $options) {
-            $meta = ['category_id' => $options['category_id'] ?? null, 'status' => $options['status'], 'updated_at' => now()];
+            $meta = ['category_id' => $options['category_id'] ?? null, 'status' => $options['status'], 'updated_at' => now(), 'is_demo' => false];
             $oldImages = [];
             if ($preview['series_id']) {
                 $series = Series::select(['id', 'title', 'slug', 'description', 'image', 'category_id', 'status'])->lockForUpdate()->findOrFail($preview['series_id']);
@@ -165,14 +165,14 @@ class ChapterImportService
                     continue;
                 }
                 $slug = $existing[$number]->slug ?? $series->slug.'-'.$number.'-'.Str::lower(Str::random(6));
-                $rows[$number] = ['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => ! empty($options['share_image']) ? ($options['image'] ?? null) : null, 'created_at' => now(), 'updated_at' => now()];
+                $rows[$number] = ['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => ! empty($options['share_image']) ? ($options['image'] ?? null) : null, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
                 $contents[$number] = clean_html($chapter['content']);
                 if (isset($existing[$number]) && $existing[$number]->image) {
                     $oldImages[] = $existing[$number]->image;
                 }
             }
             foreach (array_chunk(array_values($rows), 200) as $chunk) {
-                DB::table('posts')->upsert($chunk, ['series_id', 'chapter_number'], ['title', 'category_id', 'status', 'published_at', 'image', 'updated_at']);
+                DB::table('posts')->upsert($chunk, ['series_id', 'chapter_number'], ['title', 'category_id', 'status', 'published_at', 'image', 'updated_at', 'is_demo']);
             }
             $ids = $series->chapters()->whereIn('chapter_number', array_keys($rows))->pluck('id', 'chapter_number');
             $contentRows = [];

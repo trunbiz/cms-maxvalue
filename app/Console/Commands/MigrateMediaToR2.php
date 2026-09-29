@@ -9,7 +9,7 @@ class MigrateMediaToR2 extends Command
 {
     protected $signature = 'media:migrate-to-r2';
 
-    protected $description = 'Sao chép media từ public sang R2, giữ nguyên file gốc';
+    protected $description = 'Copy public media to R2 without deleting the original files';
 
     public function handle(): int
     {
@@ -22,7 +22,7 @@ class MigrateMediaToR2 extends Command
                 $stream = $source->readStream($path);
                 try {
                     if (! $target->put($path, $stream)) {
-                        throw new \RuntimeException('Không thể sao chép '.$path);
+                        throw new \RuntimeException('Unable to copy '.$path);
                     }
                 } finally {
                     if (is_resource($stream)) {
@@ -33,7 +33,7 @@ class MigrateMediaToR2 extends Command
         }
         $bar->finish();
         $this->newLine();
-        $this->info('Đã sao chép media.');
+        $this->info('Media copied successfully.');
 
         return self::SUCCESS;
     }

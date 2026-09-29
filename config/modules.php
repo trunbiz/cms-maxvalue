@@ -1,3 +1,3 @@
 <?php
 
-return ['dashboard' => 'Tổng quan', 'users' => 'Người dùng', 'roles' => 'Phân quyền', 'categories' => 'Danh mục', 'tags' => 'Thẻ', 'posts' => 'Bài viết & truyện', 'pages' => 'Trang nội dung', 'menus' => 'Menu', 'settings' => 'Cài đặt'];
+return ['dashboard' => 'Dashboard', 'users' => 'Users', 'roles' => 'Roles', 'categories' => 'Categories', 'tags' => 'Tags', 'posts' => 'Articles & stories', 'pages' => 'Pages', 'menus' => 'Menu', 'settings' => 'Settings'];

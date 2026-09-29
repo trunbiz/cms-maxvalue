@@ -25,8 +25,8 @@ class SiteService
     {
         return Cache::rememberForever('site.menus', function () {
             $menus = Menu::select(['id', 'name', 'slug'])->with('items')->get();
-            $targets = ['page' => Page::pluck('slug', 'id'), 'category' => Category::pluck('slug', 'id'), 'series' => Series::published()->pluck('slug', 'id')];
-            $prefix = ['page' => 'trang', 'category' => 'danh-muc', 'series' => 'truyen'];
+            $targets = ['page' => Page::select(['id', 'slug'])->published()->pluck('slug', 'id'), 'category' => Category::select(['id', 'slug'])->pluck('slug', 'id'), 'series' => Series::select(['id', 'slug'])->published()->pluck('slug', 'id')];
+            $prefix = ['page' => 'pages', 'category' => 'categories', 'series' => 'stories'];
             $result = [];
             foreach ($menus as $menu) {
                 $items = [];

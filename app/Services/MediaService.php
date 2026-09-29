@@ -18,16 +18,16 @@ class MediaService
     public function upload(UploadedFile $file, string $folder): string
     {
         if (! preg_match('/^[a-z0-9_-]+$/i', $folder)) {
-            throw new \InvalidArgumentException('Thư mục không hợp lệ.');
+            throw new \InvalidArgumentException('Invalid folder.');
         }
         $size = getimagesize($file->getRealPath());
         if (! $size || $size[0] * $size[1] > 40000000) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['image' => 'Ảnh vượt quá 40 triệu điểm ảnh.']);
+            throw \Illuminate\Validation\ValidationException::withMessages(['image' => 'Images must not exceed 40 million pixels.']);
         }
         $image = (new ImageManager(new Driver))->read($file->getRealPath())->scaleDown(width: 1200)->toWebp(82);
         $path = $folder.'/'.now()->format('Y/m').'/'.Str::uuid().'.webp';
         if (! Storage::disk(config('cloudflare.media_disk'))->put($path, (string) $image)) {
-            throw new \RuntimeException('Không thể lưu ảnh.');
+            throw new \RuntimeException('Unable to save the image.');
         }
 
         return $path;

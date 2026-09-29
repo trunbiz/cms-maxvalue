@@ -29,7 +29,7 @@ class ResourceService
                 }
             }
             if ($record->exists && $record->isSuperAdmin() && $targetRole->name !== 'Super Admin' && User::where('role_id', $record->role_id)->count() <= 1) {
-                throw ValidationException::withMessages(['role_id' => 'Phải giữ ít nhất một Super Admin.']);
+                throw ValidationException::withMessages(['role_id' => 'At least one Super Admin must remain.']);
             }
             if (empty($data['password'])) {
                 unset($data['password']);
@@ -58,6 +58,9 @@ class ResourceService
                 unset($data['tags']);
                 if ($resource === 'posts') {
                     unset($data['content']);
+                    if ($record->exists && $record->is_demo && clean_html($content) !== \App\Models\PostContent::where('post_id', $record->id)->value('content')) {
+                        $data['is_demo'] = false;
+                    }
                     if ($data['type'] === 'normal') {
                         $data['series_id'] = null;
                         $data['chapter_number'] = null;
@@ -138,7 +141,7 @@ class ResourceService
     {
         if ($resource === 'users') {
             if ($record->id === $actor->id) {
-                throw ValidationException::withMessages(['user' => 'Không thể tự xóa tài khoản.']);
+                throw ValidationException::withMessages(['user' => 'You cannot delete your own account.']);
             }
             if ($record->isSuperAdmin() && (! $actor->isSuperAdmin() || User::where('role_id', $record->role_id)->count() <= 1)) {
                 abort(403);

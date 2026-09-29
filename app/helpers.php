@@ -6,7 +6,7 @@ function media_url(?string $path): string
 }
 function post_url(\App\Models\Post $post): string
 {
-    return $post->type === 'chapter' ? url('/truyen/'.$post->series->slug.'/'.$post->slug) : url('/bai-viet/'.$post->slug);
+    return $post->type === 'chapter' ? url('/stories/'.$post->series->slug.'/'.$post->slug) : url('/articles/'.$post->slug);
 }
 function clean_html(?string $html): string
 {

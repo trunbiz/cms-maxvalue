@@ -18,7 +18,7 @@ class AuthController extends Controller
     public function store(LoginRequest $request)
     {
         if (! Auth::attempt($request->only('username', 'password'), $request->boolean('remember'))) {
-            throw ValidationException::withMessages(['username' => 'Tên đăng nhập hoặc mật khẩu không đúng.']);
+            throw ValidationException::withMessages(['username' => 'The username or password is incorrect.']);
         }
         $request->session()->regenerate();
 
@@ -40,6 +40,6 @@ class AuthController extends Controller
             if ($request->user()->hasModule($module)) {
                 return redirect('/admin/'.$module);
             }
-        } abort(403, 'Tài khoản chưa được cấp quyền.');
+        } abort(403, 'This account has not been granted any permissions.');
     }
 }

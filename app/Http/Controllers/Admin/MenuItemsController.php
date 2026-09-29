@@ -13,6 +13,6 @@ class MenuItemsController extends Controller
     {
         $service->save(Menu::select(['id', 'name', 'slug'])->findOrFail($menu), $request->validated('items'));
 
-        return response()->json(['message' => 'Đã lưu menu.']);
+        return response()->json(['message' => 'Menu saved.']);
     }
 }

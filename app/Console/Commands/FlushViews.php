@@ -12,7 +12,7 @@ class FlushViews extends Command
 {
     protected $signature = 'views:flush';
 
-    protected $description = 'Ghi dồn lượt xem Redis vào database, có thể khôi phục khi gián đoạn';
+    protected $description = 'Flush Redis views to the database with crash recovery';
 
     public function handle(): int
     {
@@ -35,7 +35,7 @@ class FlushViews extends Command
                 }
                 Redis::eval("if tonumber(redis.call('GET',KEYS[1]) or '0')==0 and redis.call('EXISTS',KEYS[2])==0 then redis.call('DEL',KEYS[1]); redis.call('SREM',KEYS[3],ARGV[1]); end; return 1", 3, $counter, $pending, 'views:pending', $member);
             }
-            $this->info('Đã đồng bộ lượt xem.');
+            $this->info('View counts synchronized.');
 
             return self::SUCCESS;
         });

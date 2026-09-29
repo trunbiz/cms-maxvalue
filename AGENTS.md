@@ -14,7 +14,7 @@
 - Frontend: controller riêng trong App\Http\Controllers\Frontend
 - Validate bằng FormRequest, logic phức tạp tách ra Service
   (vd ChapterImportService, MediaService, CloudflareService)
-- Tên bảng/biến/hàm bằng tiếng Anh; giao diện hiển thị tiếng Việt
+- Tên bảng/biến/hàm bằng tiếng Anh; giao diện hiển thị tiếng Anh (theo yêu cầu cập nhật của chủ dự án)
 
 ## Lưu trữ file (Cloudflare R2)
 - Mọi file upload (logo, favicon, ảnh bài viết, ảnh series, ảnh trong CKEditor)

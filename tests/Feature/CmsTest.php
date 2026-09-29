@@ -36,9 +36,12 @@ class CmsTest extends TestCase
     public function test_seed_and_public_pages_render_without_session_cookies(): void
     {
         $this->seed();
+        Post::query()->update(['status' => 'published']);
+        Series::query()->update(['status' => 'published']);
+        Page::query()->update(['status' => 'published']);
         $this->assertDatabaseCount('posts', 155);
         $this->assertDatabaseCount('series', 5);
-        foreach (['/', '/trang/gioi-thieu', '/danh-muc/van-hoc', '/tag/phieu-luu', '/truyen/mien-gio-ke-chuyen', '/truyen/mien-gio-ke-chuyen/mien-gio-ke-chuyen-chuong-1', '/bai-viet/doc-cham-de-hieu-minh', '/tim-kiem?q=ngay', '/ads.txt', '/sitemap.xml'] as $url) {
+        foreach (['/', '/pages/about', '/categories/literature', '/tags/adventure', '/stories/where-the-wind-tells-stories', '/stories/where-the-wind-tells-stories/where-the-wind-tells-stories-chapter-1', '/articles/reading-slowly-to-know-yourself', '/search?q=ngay', '/robots.txt', '/sitemap.xml'] as $url) {
             $response = $this->get($url);
             $response->assertOk();
             $this->assertEmpty($response->headers->getCookies(), $url);
@@ -94,7 +97,7 @@ class CmsTest extends TestCase
         $post = Post::with('content')->first();
         $this->assertStringNotContainsString('<script', $post->content->content);
         $this->assertDatabaseHas('tags', ['slug' => 'the-moi']);
-        $this->get('/bai-viet/'.$post->slug)->assertOk()->assertSee('Đẹp');
+        $this->get('/articles/'.$post->slug)->assertOk()->assertSee('Đẹp');
         $this->actingAs($this->editor(['settings']));
         $this->put('/admin/settings', ['site_name' => 'Tên mới', 'head_html' => '<script></script>'])->assertSessionHasErrors('head_html');
     }
@@ -104,11 +107,11 @@ class CmsTest extends TestCase
         $series = Series::factory()->create();
         $other = Series::factory()->create();
         $chapter = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 1]);
-        $this->get('/truyen/'.$other->slug.'/'.$chapter->slug)->assertNotFound();
+        $this->get('/stories/'.$other->slug.'/'.$chapter->slug)->assertNotFound();
         $series->update(['status' => 'draft']);
-        $this->get('/truyen/'.$series->slug.'/'.$chapter->slug)->assertNotFound();
+        $this->get('/stories/'.$series->slug.'/'.$chapter->slug)->assertNotFound();
         $post = Post::factory()->create(['published_at' => now()->addDay()]);
-        $this->get('/bai-viet/'.$post->slug)->assertNotFound();
+        $this->get('/articles/'.$post->slug)->assertNotFound();
     }
 
     public function test_import_html_plain_text_formats_and_bulk_storage(): void
@@ -210,7 +213,7 @@ class CmsTest extends TestCase
         $menu = Menu::factory()->create(['slug' => 'main']);
         $site = app(SiteService::class);
         $this->assertSame([], $site->menus()['main']);
-        $items = [['id' => -1, 'parent_id' => null, 'label' => 'Cha', 'type' => 'url', 'url' => '/'], ['id' => -2, 'parent_id' => -1, 'label' => 'Con', 'type' => 'url', 'url' => '/tim-kiem']];
+        $items = [['id' => -1, 'parent_id' => null, 'label' => 'Cha', 'type' => 'url', 'url' => '/'], ['id' => -2, 'parent_id' => -1, 'label' => 'Con', 'type' => 'url', 'url' => '/search']];
         $this->putJson('/admin/menus/'.$menu->id.'/items', ['items' => $items])->assertOk();
         $this->assertSame('Con', $site->menus()['main'][0]['children'][0]['label']);
         $items[0]['parent_id'] = -2;
@@ -223,12 +226,12 @@ class CmsTest extends TestCase
     {
         config(['responsecache.enabled' => true]);
         $page = Page::factory()->create(['title' => 'Nội dung cũ']);
-        $guest = $this->get('/trang/'.$page->slug)->assertOk()->getContent();
+        $guest = $this->get('/pages/'.$page->slug)->assertOk()->getContent();
         $admin = $this->admin();
         $this->actingAs($admin);
-        $this->assertSame($guest, $this->get('/trang/'.$page->slug)->getContent());
-        $this->put('/admin/pages/'.$page->id, ['title' => 'Nội dung mới', 'slug' => $page->slug, 'content' => '<p>Thay đổi</p>'])->assertSessionHasNoErrors();
-        $this->get('/trang/'.$page->slug)->assertSee('Nội dung mới')->assertDontSee('Nội dung cũ');
+        $this->assertSame($guest, $this->get('/pages/'.$page->slug)->getContent());
+        $this->put('/admin/pages/'.$page->id, ['title' => 'Nội dung mới', 'slug' => $page->slug, 'content' => '<p>Thay đổi</p>', 'status' => 'published'])->assertSessionHasNoErrors();
+        $this->get('/pages/'.$page->slug)->assertSee('Nội dung mới')->assertDontSee('Nội dung cũ');
     }
 
     public function test_cloudflare_disabled_and_batches_of_thirty(): void
@@ -258,9 +261,11 @@ class CmsTest extends TestCase
     public function test_query_count_does_not_grow_per_chapter(): void
     {
         $this->seed();
+        Post::query()->update(['status' => 'published']);
+        Series::query()->update(['status' => 'published']);
         Cache::flush();
         DB::enableQueryLog();
-        $this->get('/truyen/mien-gio-ke-chuyen')->assertOk();
+        $this->get('/stories/where-the-wind-tells-stories')->assertOk();
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
         $this->assertLessThan(20, count($queries));

@@ -16,22 +16,22 @@ class MenuService
     {
         $ids = array_column($items, 'id');
         if (count($ids) !== count(array_unique($ids))) {
-            $this->fail('Mục menu bị trùng.');
+            $this->fail('Duplicate menu items.');
         }
         $owned = $menu->items()->pluck('id')->all();
         $map = [];
         foreach ($items as $item) {
             $id = $item['id'];
             if ($id > 0 && ! in_array($id, $owned, true)) {
-                $this->fail('Mục menu không thuộc menu này.');
+                $this->fail('The item does not belong to this menu.');
             }
             if ($item['type'] === 'url' && empty($item['url'])) {
-                $this->fail('Vui lòng nhập URL.');
+                $this->fail('Please enter a URL.');
             }
             if ($item['type'] !== 'url') {
                 $class = ['page' => Page::class, 'category' => Category::class, 'series' => Series::class][$item['type']];
                 if (! $class::whereKey($item['target_id'])->exists()) {
-                    $this->fail('Liên kết đích không tồn tại.');
+                    $this->fail('The link destination does not exist.');
                 }
             }
             $map[$id] = $item['parent_id'] ?? null;
@@ -40,10 +40,10 @@ class MenuService
             $seen = [$id];
             while ($parent !== null) {
                 if (! array_key_exists($parent, $map) || in_array($parent, $seen, true)) {
-                    $this->fail('Cấp menu không hợp lệ hoặc tạo vòng lặp.');
+                    $this->fail('Invalid menu nesting or circular reference.');
                 } $seen[] = $parent;
                 if (count($seen) > 5) {
-                    $this->fail('Menu tối đa 5 cấp.');
+                    $this->fail('Menus may have up to 5 levels.');
                 } $parent = $map[$parent];
             }
         }

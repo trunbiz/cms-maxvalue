@@ -28,6 +28,9 @@ class ResourceRequest extends FormRequest
         $id = $this->route('id');
         $base = ['name' => 'required|string|max:255', 'title' => 'required|string|max:255', 'slug' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique($r, 'slug')->ignore($id)], 'description' => 'nullable|string|max:30000', 'excerpt' => 'nullable|string|max:30000', 'content' => 'required|string|max:3000000', 'seo_title' => 'nullable|string|max:255', 'seo_keywords' => 'nullable|string|max:2000', 'seo_description' => 'nullable|string|max:2000', 'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:5120', 'category_id' => 'nullable|exists:categories,id', 'status' => ['required', Rule::in(['draft', 'published'])], 'published_at' => 'nullable|date', 'tags' => 'nullable|array|max:100', 'type' => ['required', Rule::in(['normal', 'chapter'])], 'series_id' => 'required_if:type,chapter|nullable|exists:series,id', 'chapter_number' => ['required_if:type,chapter', 'nullable', 'integer', 'min:1', Rule::unique('posts', 'chapter_number')->where('series_id', $this->input('series_id'))->ignore($id)], 'username' => ['required', 'alpha_dash', 'max:255', Rule::unique('users')->ignore($id)], 'password' => [$id ? 'nullable' : 'required', 'string', 'min:8', 'max:255'], 'role_id' => 'required|exists:roles,id', 'modules' => 'nullable|array'];
         $rules = array_intersect_key($base, config('cms.resources.'.$r.'.fields', []));
+        if ($r === 'posts') {
+            $rules['author_name'] = 'nullable|string|max:255';
+        }
         if ($r === 'roles') {
             $rules['name'] = ['required', 'string', 'max:255', Rule::unique('roles')->ignore($id)];
             $rules['modules.*'] = [Rule::in(array_keys(config('modules')))];
@@ -37,5 +40,16 @@ class ResourceRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->route('resource') === 'pages' && $this->input('status') === 'published'
+                && preg_match('/\[\[(publisher_name|contact_email|site_url)\]\]/', (string) $this->input('content'))
+                && ! app(\App\Services\PublisherService::class)->profileComplete(app(\App\Services\SiteService::class)->settings())) {
+                $validator->errors()->add('status', 'Complete the publisher profile in Settings before publishing a page that uses publisher placeholders.');
+            }
+        });
     }
 }

@@ -9,7 +9,7 @@ class Post extends Model
 {
     use \App\Models\Concerns\SelectExplicitColumns, HasFactory;
 
-    protected $fillable = ['type', 'series_id', 'chapter_number', 'title', 'slug', 'excerpt', 'image', 'category_id', 'status', 'views', 'published_at', 'seo_title', 'seo_description'];
+    protected $fillable = ['type', 'series_id', 'chapter_number', 'title', 'slug', 'excerpt', 'image', 'category_id', 'status', 'views', 'published_at', 'seo_title', 'seo_description', 'author_name', 'is_demo'];
 
     protected $casts = ['published_at' => 'datetime'];
 

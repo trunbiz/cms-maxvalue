@@ -21,6 +21,6 @@ class BrowseRequest extends FormRequest
     protected function failedValidation(Validator $validator): void
     {
         // Public routes are stateless, so validation cannot flash errors into a session.
-        throw new HttpResponseException(response()->json(['message' => 'Tham số tìm kiếm không hợp lệ.', 'errors' => $validator->errors()], 422));
+        throw new HttpResponseException(response()->json(['message' => 'Invalid search parameters.', 'errors' => $validator->errors()], 422));
     }
 }

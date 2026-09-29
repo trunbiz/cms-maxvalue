@@ -1,2 +1,43 @@
 @extends('frontend.layout')
-@section('content')<section class="reading-hero mb-5"><div><span class="eyebrow">CHÀO MỪNG ĐẾN VỚI GÓC ĐỌC</span><h1>Chậm lại một chút.<br>Mở ra một thế giới.</h1><p>Những câu chuyện hay luôn chờ bạn.<br>Chọn một cuốn sách, tìm một góc yên, và bắt đầu.</p><a class="btn btn-primary px-4" href="#new-series">Khám phá thư viện <span class="ms-3">→</span></a></div><div class="hero-art" aria-hidden="true"><div class="hero-orbit"></div><div class="hero-book"><span>NHỮNG<br>MIỀN<br>CÂU CHUYỆN</span><div>GÓC ĐỌC</div></div><span class="hero-note">Dành cho những tâm hồn<br>yêu từng trang sách.</span></div></section><section id="new-series" class="mb-5"><div class="section-heading"><div><span class="eyebrow">TIẾP NỐI NHỮNG HÀNH TRÌNH</span><h2>Truyện mới cập nhật</h2></div><span class="small text-muted">Mỗi ngày, thêm một câu chuyện</span></div><div class="row g-4">@forelse($series as $book)<div class="col-6 col-md-4 col-lg-3">@include('frontend.series-card')</div>@empty<p>Thư viện đang được cập nhật.</p>@endforelse</div></section><section class="category-strip my-5"><span class="eyebrow">BẠN MUỐN ĐỌC GÌ HÔM NAY?</span><div class="d-flex flex-wrap gap-3 mt-3">@foreach($categories as $category)<a class="category-pill" href="/danh-muc/{{ $category->slug }}">{{ $category->name }} <span>↗</span></a>@endforeach</div></section><section class="mb-5"><div class="section-heading"><div><span class="eyebrow">ĐỌC & SUY NGẪM</span><h2>Những trang viết mới</h2></div></div><div class="row g-4">@foreach($posts as $post)<div class="col-md-6 col-lg-4">@include('frontend.post-card')</div>@endforeach</div></section>@foreach($categories as $category) @if(($categorySeries[$category->id]??collect())->isNotEmpty())<section class="mb-5"><div class="section-heading"><h2>{{ $category->name }}</h2><a href="/danh-muc/{{ $category->slug }}">Xem tất cả →</a></div><div class="row g-4">@foreach($categorySeries[$category->id]->take(4) as $book)<div class="col-6 col-md-3">@include('frontend.series-card')</div>@endforeach</div></section>@endif @endforeach @endsection
+@section('content')
+<section class="reading-hero mb-5">
+    <div>
+        <span class="eyebrow">WELCOME TO {{ $settings['site_name']??'Reading Corner' }}</span>
+        <h1>Take a moment.<br>Discover a new perspective.</h1>
+        <p>Make room for ideas, stories, and the pleasure of reading.<br>Find a quiet corner and explore at your own pace.</p>
+        <a class="btn btn-primary px-4" href="/articles">Explore the articles <span class="ms-3">→</span></a>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+        <div class="hero-orbit"></div>
+        <div class="hero-book"><span>A WORLD<br>BETWEEN<br>THE PAGES</span><div>READ & REFLECT</div></div>
+        <span class="hero-note">For curious minds<br>and thoughtful readers.</span>
+    </div>
+</section>
+<section class="mb-5" id="latest-articles">
+    <div class="section-heading"><div><span class="eyebrow">READ & REFLECT</span><h2>Latest articles</h2></div><a href="/articles">View all →</a></div>
+    <div class="row g-4">
+        @forelse($posts as $post)<div class="col-md-6 col-lg-4">@include('frontend.post-card')</div>
+        @empty<div class="col-12"><p class="text-muted">No articles have been published yet.</p></div>@endforelse
+    </div>
+</section>
+@if($posts->isNotEmpty()||$series->isNotEmpty())
+    <section class="category-strip my-5">
+        <span class="eyebrow">BROWSE BY TOPIC</span>
+        <div class="d-flex flex-wrap gap-3 mt-3">@foreach($categories as $category)<a class="category-pill" href="/categories/{{ $category->slug }}">{{ $category->name }} <span>↗</span></a>@endforeach</div>
+    </section>
+@endif
+@if($series->isNotEmpty())
+    <section id="new-series" class="mb-5">
+        <div class="section-heading"><div><span class="eyebrow">CONTINUE THE JOURNEY</span><h2>Recently updated stories</h2></div><span class="small text-muted">Discover your next read</span></div>
+        <div class="row g-4">@foreach($series as $book)<div class="col-6 col-md-4 col-lg-3">@include('frontend.series-card')</div>@endforeach</div>
+    </section>
+@endif
+@foreach($categories as $category)
+    @if(($categorySeries[$category->id]??collect())->isNotEmpty())
+        <section class="mb-5">
+            <div class="section-heading"><h2>{{ $category->name }}</h2><a href="/categories/{{ $category->slug }}">View all →</a></div>
+            <div class="row g-4">@foreach($categorySeries[$category->id]->take(4) as $book)<div class="col-6 col-md-3">@include('frontend.series-card')</div>@endforeach</div>
+        </section>
+    @endif
+@endforeach
+@endsection

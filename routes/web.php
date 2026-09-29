@@ -17,7 +17,10 @@ Route::prefix('admin')->group(function () {
         Route::get('dashboard', [ResourceController::class, 'dashboard'])->middleware('module:dashboard');
         Route::get('settings', [SettingsController::class, 'edit'])->middleware('module:settings');
         Route::put('settings', [SettingsController::class, 'update'])->middleware('module:settings');
+        Route::post('settings/publish-pages', [SettingsController::class, 'publishPages'])->middleware('module:settings');
         Route::post('upload/editor', UploadController::class);
+        Route::get('posts/{id}/preview', [\App\Http\Controllers\Frontend\ReadingController::class, 'preview'])->middleware('module:posts')->whereNumber('id');
+        Route::get('pages/{id}/preview', [\App\Http\Controllers\Frontend\ReadingController::class, 'pagePreview'])->middleware('module:pages')->whereNumber('id');
         Route::put('menus/{menu}/items', MenuItemsController::class)->middleware('module:menus')->whereNumber('menu');
         Route::middleware('module:posts')->group(function () {
             Route::get('import', [ChapterImportController::class, 'create']);

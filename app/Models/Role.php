@@ -23,12 +23,12 @@ class Role extends Model
     {
         static::deleting(function (Role $role) {
             if ($role->name === 'Super Admin' || $role->users()->exists()) {
-                throw ValidationException::withMessages(['role' => 'Không thể xóa quyền quản trị hoặc quyền đang được sử dụng.']);
+                throw ValidationException::withMessages(['role' => 'The Super Admin role and roles assigned to users cannot be deleted.']);
             }
         });
         static::updating(function (Role $role) {
             if ($role->getOriginal('name') === 'Super Admin' && $role->isDirty('name')) {
-                throw ValidationException::withMessages(['name' => 'Không thể đổi tên Super Admin.']);
+                throw ValidationException::withMessages(['name' => 'The Super Admin role cannot be renamed.']);
             }
         });
     }

@@ -95,25 +95,25 @@ class ResourceController extends Controller
         $model = $this->definition($resource)['model'];
         $record = $service->save($resource, new $model, $request->validated(), $request->user());
 
-        return redirect('/admin/'.$resource.'/'.$record->id.'/edit')->with('success', 'Đã tạo thành công.');
+        return redirect('/admin/'.$resource.'/'.$record->id.'/edit')->with('success', 'Created successfully.');
     }
 
     public function update(ResourceRequest $request, string $resource, int $id, ResourceService $service)
     {
         $service->save($resource, $this->query($resource)->findOrFail($id), $request->validated(), $request->user());
 
-        return back()->with('success', 'Đã lưu thay đổi.');
+        return back()->with('success', 'Changes saved.');
     }
 
     public function destroy(Request $request, string $resource, int $id, ResourceService $service)
     {
         $service->delete($resource, $this->query($resource)->findOrFail($id), $request->user());
 
-        return redirect('/admin/'.$resource)->with('success', 'Đã xóa.');
+        return redirect('/admin/'.$resource)->with('success', 'Deleted successfully.');
     }
 
     public function dashboard()
     {
-        return view('admin.dashboard', ['counts' => ['Bài viết' => Post::count(), 'Truyện' => Series::count(), 'Danh mục' => Category::count(), 'Người dùng' => User::count()], 'posts' => Post::select(['id', 'title', 'type', 'status', 'created_at'])->latest()->limit(10)->get()]);
+        return view('admin.dashboard', ['counts' => ['Articles' => Post::count(), 'Stories' => Series::count(), 'Categories' => Category::count(), 'Users' => User::count()], 'posts' => Post::select(['id', 'title', 'type', 'status', 'created_at'])->latest()->limit(10)->get()]);
     }
 }

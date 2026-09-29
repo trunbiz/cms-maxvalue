@@ -8,6 +8,6 @@ class PageFactory extends Factory
 {
     public function definition(): array
     {
-        return ['title' => fake()->sentence(), 'slug' => fake()->unique()->slug(), 'content' => '<p>'.fake()->paragraph().'</p>'];
+        return ['title' => fake()->sentence(), 'slug' => fake()->unique()->slug(), 'content' => '<p>'.fake()->paragraph().'</p>', 'status' => 'published'];
     }
 }
