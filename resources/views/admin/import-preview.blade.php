@@ -1,3 +1,13 @@
 @extends('admin.layout')
-@section('title','Import preview')
-@section('content')<div class="card border-0 shadow-sm p-4 mb-4"><h2 class="h4">{{ $preview['title'] }}</h2><p class="text-secondary">{{ $preview['description'] }}</p><p>{{ count($preview['chapters']) }} chapters · Duplicate chapters: {{ $options['duplicates']==='skip'?'Skip':'Overwrite' }}</p>@if($preview['warnings'])<div class="alert alert-warning"><ul class="mb-0">@foreach($preview['warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul></div>@endif<div class="table-responsive"><table class="table"><thead><tr><th>Chapter number</th><th>Title</th><th>Word count</th><th>State</th></tr></thead><tbody>@foreach($preview['chapters'] as $chapter)<tr><td>{{ $chapter['number'] }}</td><td>{{ $chapter['title'] }}</td><td>{{ $chapter['words'] }}</td><td>{{ $chapter['existing']?'Existing':'New' }}</td></tr>@endforeach</tbody></table></div><form method="post" action="/admin/import">@csrf<input type="hidden" name="token" value="{{ $token }}"><button class="btn btn-primary">Confirm and save chapters</button><a href="/admin/import" class="btn btn-light">Start over</a></form></div>@endsection
+@section('title','Review chapters')
+@section('content')
+<section class="editor-section">
+    @include('admin.chapter-preview')
+    <form method="post" action="/admin/import" class="d-flex gap-2 mt-4">
+        @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
+        <button class="btn btn-primary">Save chapters</button>
+        <a href="/admin/posts/create?mode=import" class="btn btn-light">Back to manuscript</a>
+    </form>
+</section>
+@endsection

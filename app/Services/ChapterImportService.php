@@ -156,6 +156,8 @@ class ChapterImportService
             }
             $tagIds = app(ResourceService::class)->tagIds($options['tags'] ?? []);
             app(ResourceService::class)->syncTags($series, $tagIds);
+            $categoryIds = $options['category_ids'] ?? array_filter([$meta['category_id']]);
+            app(ResourceService::class)->syncCategories($series, $categoryIds);
             $existing = $series->chapters()->select(['id', 'chapter_number', 'slug', 'image'])->get()->keyBy('chapter_number');
             $rows = [];
             $contents = [];
@@ -189,6 +191,16 @@ class ChapterImportService
             DB::table('post_tag')->whereIn('post_id', $ids->values()->all())->delete();
             foreach (array_chunk($pivots, 500) as $chunk) {
                 DB::table('post_tag')->insert($chunk);
+            }
+            DB::table('category_post')->whereIn('post_id', $ids->values()->all())->delete();
+            $categoryRows = [];
+            foreach ($ids as $id) {
+                foreach ($categoryIds as $categoryId) {
+                    $categoryRows[] = ['post_id' => $id, 'category_id' => $categoryId];
+                }
+            }
+            foreach (array_chunk($categoryRows, 500) as $chunk) {
+                DB::table('category_post')->insert($chunk);
             }
             DB::afterCommit(function () use ($oldImages) {
                 foreach (array_unique($oldImages) as $path) {

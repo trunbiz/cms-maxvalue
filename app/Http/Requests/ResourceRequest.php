@@ -17,6 +17,16 @@ class ResourceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (in_array($this->route('resource'), ['posts', 'series']) && ($this->has('category_selection') || $this->has('category_ids'))) {
+            $ids = $this->input('category_ids', []);
+            $this->merge(['category_ids' => $ids, 'category_id' => is_array($ids) ? ($ids[0] ?? null) : null]);
+        }
+        if ($this->route('resource') === 'posts' && $this->route('id')) {
+            $post = \App\Models\Post::select(['id', 'type', 'series_id', 'chapter_number'])->find($this->route('id'));
+            if ($post?->type === 'chapter') {
+                $this->merge(['type' => 'chapter', 'series_id' => $post->series_id, 'chapter_number' => $post->chapter_number]);
+            }
+        }
         if (array_key_exists('slug', config('cms.resources.'.$this->route('resource').'.fields', [])) && ! $this->filled('slug')) {
             $this->merge(['slug' => Str::slug($this->input('title') ?: $this->input('name'))]);
         }
@@ -28,8 +38,13 @@ class ResourceRequest extends FormRequest
         $id = $this->route('id');
         $base = ['name' => 'required|string|max:255', 'title' => 'required|string|max:255', 'slug' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', Rule::unique($r, 'slug')->ignore($id)], 'description' => 'nullable|string|max:30000', 'excerpt' => 'nullable|string|max:30000', 'content' => 'required|string|max:3000000', 'seo_title' => 'nullable|string|max:255', 'seo_keywords' => 'nullable|string|max:2000', 'seo_description' => 'nullable|string|max:2000', 'image' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:5120', 'category_id' => 'nullable|exists:categories,id', 'status' => ['required', Rule::in(['draft', 'published'])], 'published_at' => 'nullable|date', 'tags' => 'nullable|array|max:100', 'type' => ['required', Rule::in(['normal', 'chapter'])], 'series_id' => 'required_if:type,chapter|nullable|exists:series,id', 'chapter_number' => ['required_if:type,chapter', 'nullable', 'integer', 'min:1', Rule::unique('posts', 'chapter_number')->where('series_id', $this->input('series_id'))->ignore($id)], 'username' => ['required', 'alpha_dash', 'max:255', Rule::unique('users')->ignore($id)], 'password' => [$id ? 'nullable' : 'required', 'string', 'min:8', 'max:255'], 'role_id' => 'required|exists:roles,id', 'modules' => 'nullable|array'];
         $rules = array_intersect_key($base, config('cms.resources.'.$r.'.fields', []));
+        if (in_array($r, ['posts', 'series'])) {
+            $rules['category_ids'] = 'sometimes|array|max:100';
+            $rules['category_ids.*'] = 'integer|distinct|exists:categories,id';
+        }
         if ($r === 'posts') {
-            $rules['author_name'] = 'nullable|string|max:255';
+            $rules['type'] = ['required', Rule::in($id ? ['normal', 'chapter'] : ['normal'])];
+            $rules['chapter_number'] = $base['chapter_number'];
         }
         if ($r === 'roles') {
             $rules['name'] = ['required', 'string', 'max:255', Rule::unique('roles')->ignore($id)];

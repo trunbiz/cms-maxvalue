@@ -55,7 +55,8 @@ class ResourceService
             DB::transaction(function () use ($resource, $record, $data) {
                 $content = $data['content'] ?? null;
                 $tags = $data['tags'] ?? [];
-                unset($data['tags']);
+                $categoryIds = $data['category_ids'] ?? array_filter([$data['category_id'] ?? null]);
+                unset($data['tags'], $data['category_ids']);
                 if ($resource === 'posts') {
                     unset($data['content']);
                     if ($record->exists && $record->is_demo && clean_html($content) !== \App\Models\PostContent::where('post_id', $record->id)->value('content')) {
@@ -84,6 +85,7 @@ class ResourceService
                 }
                 if (in_array($resource, ['posts', 'series'])) {
                     $this->syncTags($record, $this->tagIds($tags));
+                    $this->syncCategories($record, $categoryIds);
                 }
             });
         } catch (\Throwable $e) {
@@ -134,6 +136,15 @@ class ResourceService
         DB::table($entity.'_tag')->where($entity.'_id', $record->id)->delete();
         if ($ids) {
             DB::table($entity.'_tag')->insert(array_map(fn ($id) => [$entity.'_id' => $record->id, 'tag_id' => $id], $ids));
+        }
+    }
+
+    public function syncCategories($record, array $ids): void
+    {
+        $entity = $record instanceof Series ? 'series' : 'post';
+        DB::table('category_'.$entity)->where($entity.'_id', $record->id)->delete();
+        if ($ids) {
+            DB::table('category_'.$entity)->insert(array_map(fn ($id) => [$entity.'_id' => $record->id, 'category_id' => $id], array_values(array_unique($ids))));
         }
     }
 

@@ -39,7 +39,7 @@ If you use an OpenServer domain, set its document root to public/ and update APP
 
 Read [the publication and AdSense setup guide](docs/ADSENSE_SETUP.md) before launch. Six editable policy pages are prepared: About, Contact, Privacy Policy, Terms of Use, Editorial Policy, and Copyright & Corrections.
 
-Articles support drafts, authenticated previews, author names, publication dates, featured images, SEO metadata, Article JSON-LD, tags, and related reading. AdSense settings generate ownership verification and ads.txt from your own Publisher ID. No advertisements or tracking scripts are enabled automatically, and no application is submitted automatically.
+Articles support drafts, authenticated previews, publication dates, featured images, SEO metadata, Article JSON-LD, tags, and related reading. AdSense settings generate ownership verification and ads.txt from your own Publisher ID. No advertisements or tracking scripts are enabled automatically, and no application is submitted automatically.
 
 The application is prepared for publishing; Google approval requires a real public site with appropriate original content and accurate policies. A localhost URL and demo drafts are not ready for submission.
 
@@ -80,6 +80,7 @@ A user-scoped preview must be confirmed before insertion. Each import is transac
 
 ~~~bash
 php artisan test
+npm run test:ui
 php vendor/bin/pint --test
 npm run build
 php artisan route:cache
@@ -93,3 +94,7 @@ Use migrate:fresh --seed only on a disposable development database: it deletes e
 PHP dependencies are resolved for PHP 8.1.1. Laravel 10 is retained as required; Composer audit reports framework advisories for this version. Browser visual verification was unavailable in the tool environment; HTTP and Feature tests were used.
 
 Changes for the English publishing update are listed in [docs/ENGLISH_CHANGES.md](docs/ENGLISH_CHANGES.md).
+
+See [docs/PUBLISHING_EDITOR.md](docs/PUBLISHING_EDITOR.md) for the grouped editor, searchable category/tag checkboxes, image previews, copy links, and inline chapter analysis workflow.
+
+Files changed in the editor update are listed in [docs/EDITOR_CHANGES.md](docs/EDITOR_CHANGES.md).

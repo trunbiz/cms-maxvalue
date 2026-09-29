@@ -14,7 +14,7 @@ use App\Services\SiteService;
 
 class ReadingController extends Controller
 {
-    private const POST_COLUMNS = ['id', 'title', 'slug', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'views', 'published_at', 'seo_title', 'seo_description', 'author_name', 'updated_at', 'status'];
+    private const POST_COLUMNS = ['id', 'title', 'slug', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'views', 'published_at', 'seo_title', 'seo_description', 'updated_at', 'status'];
 
     private const SERIES_COLUMNS = ['id', 'title', 'slug', 'description', 'image', 'category_id', 'status', 'views', 'seo_title', 'seo_keywords', 'seo_description', 'updated_at'];
 
@@ -74,8 +74,9 @@ class ReadingController extends Controller
     {
         $category = app(SiteService::class)->categories()->firstWhere('slug', $slug);
         abort_unless($category, 404);
-        $series = $this->seriesQuery()->where('category_id', $category->id)->latest('updated_at')->paginate(12, ['id'], 'series_page')->withQueryString();
-        $posts = $this->posts()->where('type', 'normal')->where('category_id', $category->id)->latest('published_at')->paginate(12)->withQueryString();
+        $inCategory = fn ($q) => $q->where('category_id', $category->id)->orWhereHas('categories', fn ($c) => $c->select('categories.id')->where('categories.id', $category->id));
+        $series = $this->seriesQuery()->where($inCategory)->latest('updated_at')->paginate(12, ['id'], 'series_page')->withQueryString();
+        $posts = $this->posts()->where('type', 'normal')->where($inCategory)->latest('published_at')->paginate(12)->withQueryString();
 
         return $this->pageView('listing', ['heading' => $category->name, 'description' => $category->description, 'series' => $series, 'posts' => $posts], $category);
     }
@@ -146,7 +147,7 @@ class ReadingController extends Controller
         $wordCount = preg_match_all('/[\p{L}\p{N}]+/u', strip_tags($content));
         $readingMinutes = max(1, (int) ceil($wordCount / 220));
         $settings = app(SiteService::class)->settings();
-        $schema = ['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $article->title, 'description' => $article->seo_description ?: $article->excerpt, 'inLanguage' => 'en', 'mainEntityOfPage' => url('/articles/'.$article->slug), 'author' => ['@type' => $article->author_name ? 'Person' : 'Organization', 'name' => $article->author_name ?: ($settings['site_name'] ?? 'Reading Corner')], 'publisher' => ['@type' => 'Organization', 'name' => $settings['site_name'] ?? 'Reading Corner', 'url' => url('/')], 'dateModified' => $article->updated_at?->toIso8601String()];
+        $schema = ['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $article->title, 'description' => $article->seo_description ?: $article->excerpt, 'inLanguage' => 'en', 'mainEntityOfPage' => url('/articles/'.$article->slug), 'publisher' => ['@type' => 'Organization', 'name' => $settings['site_name'] ?? 'Reading Corner', 'url' => url('/')], 'dateModified' => $article->updated_at?->toIso8601String()];
         if ($article->published_at) {
             $schema['datePublished'] = $article->published_at->toIso8601String();
         }

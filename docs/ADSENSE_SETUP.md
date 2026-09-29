@@ -37,11 +37,11 @@ After reviewing, either publish pages individually or use **Publish reviewed pag
 
 1. Open **Admin → Articles & stories → Add new**.
 2. Choose **Standard article**.
-3. Add a specific title, a useful summary, the article, category, tags, and an accurate author name. Use only images you are entitled to use.
+3. Add a specific title, a useful summary, the article, categories and tags. Use only images you are entitled to use.
 4. Save as **Draft**, then click **Preview saved content**. The preview requires admin permission, is not cached, and is marked noindex.
 5. Check sources, formatting, image rights, original contribution, and links. Publish when ready. A future publication date keeps the article hidden until that date.
 
-Articles display a byline, publication/update dates, estimated reading time, related articles, canonical metadata, and Article JSON-LD. If no author name is provided, the publication name is used as an organizational byline; no person or credentials are fabricated.
+Articles display publication/update dates, estimated reading time, related articles, a copy-link button, canonical metadata, and Article JSON-LD. Author names are not collected in the editor or exposed in article markup.
 
 The original 155 unchanged sample posts/chapters were converted into English **drafts**. They are not an AdSense content collection. The preparation command leaves authored content and edited policy pages unchanged. Rewriting a demo article clears its demo marker when saved.
 

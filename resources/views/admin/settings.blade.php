@@ -9,10 +9,9 @@
         @foreach(['site_name'=>'Website name','publisher_name'=>'Publisher / operator name','contact_email'=>'Public contact email','site_url'=>'Public website URL','seo_description'=>'Site description','logo'=>'Logo','favicon'=>'Favicon','adsense_publisher_id'=>'AdSense Publisher ID','ads_txt'=>'Additional ads.txt entries','head_html'=>'Custom head HTML'] as $key=>$label)
             @if($key!=='head_html'||auth()->user()->isSuperAdmin())
                 <div class="{{ in_array($key,['seo_description','ads_txt','head_html'])?'col-12':'col-md-6' }}">
-                    <label class="form-label" for="{{ $key }}">{{ $label }}</label>
+                    <label class="form-label" for="{{ in_array($key,['logo','favicon'])?'field-'.$key:$key }}">{{ $label }}</label>
                     @if(in_array($key,['logo','favicon']))
-                        <input class="form-control" type="file" id="{{ $key }}" name="{{ $key }}" accept="image/jpeg,image/png,image/webp,image/gif">
-                        @if($settings[$key]??null)<img src="{{ media_url($settings[$key]) }}" width="90" loading="lazy" alt="{{ $label }}" class="mt-2">@endif
+                        @include('admin.fields.image',['name'=>$key,'label'=>$label,'path'=>$settings[$key]??null])
                     @elseif(in_array($key,['seo_description','ads_txt','head_html']))
                         <textarea class="form-control" id="{{ $key }}" name="{{ $key }}" rows="{{ $key==='head_html'?7:4 }}">{{ old($key,$settings[$key]??'') }}</textarea>
                     @else

@@ -14,12 +14,12 @@
         @if($isArticle)
             @if($article->excerpt)<p class="article-deck mt-3">{{ $article->excerpt }}</p>@endif
             <div class="article-meta d-flex flex-wrap justify-content-center gap-3 mt-4">
-                <span>By {{ $article->author_name?:($settings['site_name']??'Reading Corner') }}</span>
                 @if($article->published_at)<span>Published <time datetime="{{ $article->published_at->toIso8601String() }}">{{ $article->published_at->format('F j, Y') }}</time></span>@endif
                 @if($article->updated_at && $article->published_at && $article->updated_at->gt($article->published_at) && !$article->updated_at->isSameDay($article->published_at))
                     <span>Updated <time datetime="{{ $article->updated_at->toIso8601String() }}">{{ $article->updated_at->format('F j, Y') }}</time></span>
                 @endif
                 <span>{{ $readingMinutes??1 }} min read</span>
+                @unless($isPreview??false)<button type="button" class="btn btn-sm btn-outline-secondary" data-copy-link="{{ post_url($article) }}">Copy link</button>@endunless
             </div>
         @elseif($article->updated_at)
             <p class="text-muted small mt-3">Last updated <time datetime="{{ $article->updated_at->toIso8601String() }}">{{ $article->updated_at->format('F j, Y') }}</time></p>

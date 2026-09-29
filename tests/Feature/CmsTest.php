@@ -52,7 +52,7 @@ class CmsTest extends TestCase
     {
         $this->seed();
         $this->actingAs(User::select(['id', 'name', 'username', 'password', 'role_id'])->first());
-        foreach (['dashboard', 'settings', 'import', 'users', 'roles', 'categories', 'tags', 'posts', 'series', 'pages', 'menus'] as $resource) {
+        foreach (['dashboard', 'settings', 'users', 'roles', 'categories', 'tags', 'posts', 'series', 'pages', 'menus'] as $resource) {
             $this->get('/admin/'.$resource)->assertOk();
         }
         foreach (['users', 'roles', 'categories', 'tags', 'posts', 'series', 'pages', 'menus'] as $resource) {

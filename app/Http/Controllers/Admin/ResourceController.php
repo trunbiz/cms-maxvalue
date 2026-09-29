@@ -78,10 +78,10 @@ class ResourceController extends Controller
     {
         $definition = $this->definition($resource);
         if ($resource === 'posts') {
-            $record->load('content', 'tags');
+            $record->load('content', 'tags', 'categories', 'series');
         }
         if ($resource === 'series') {
-            $record->load('tags');
+            $record->load('tags', 'categories');
         }
         if ($resource === 'menus') {
             $record->load('items');

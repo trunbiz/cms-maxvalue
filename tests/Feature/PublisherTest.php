@@ -71,17 +71,17 @@ class PublisherTest extends TestCase
         $this->get('/ads.txt')->assertOk()->assertSee('google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0', false)->assertSee('other.example');
     }
 
-    public function test_article_has_author_dates_schema_and_authenticated_draft_preview(): void
+    public function test_article_hides_author_and_has_dates_schema_and_authenticated_draft_preview(): void
     {
         $post = Post::factory()->create(['status' => 'draft', 'author_name' => 'A Real Writer']);
         $post->content()->create(['content' => '<h2>A helpful heading</h2><p>Original article body.</p>']);
         $this->get('/articles/'.$post->slug)->assertNotFound();
         $this->get('/admin/posts/'.$post->id.'/preview')->assertRedirect('/admin/login');
         $this->actingAs($this->admin());
-        $response = $this->get('/admin/posts/'.$post->id.'/preview')->assertOk()->assertSee('Private preview')->assertSee('A Real Writer')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+        $response = $this->get('/admin/posts/'.$post->id.'/preview')->assertOk()->assertSee('Private preview')->assertDontSee('A Real Writer')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $post->update(['status' => 'published']);
-        $this->get('/articles/'.$post->slug)->assertOk()->assertSee('A Real Writer')->assertSee('min read')->assertSee('"@type":"Article"', false)->assertSee('datePublished')->assertSee('dateModified');
+        $this->get('/articles/'.$post->slug)->assertOk()->assertDontSee('A Real Writer')->assertDontSee('"author":', false)->assertSee('Copy link')->assertSee('min read')->assertSee('"@type":"Article"', false)->assertSee('datePublished')->assertSee('dateModified');
     }
 
     public function test_legacy_urls_redirect_and_search_is_noindex(): void

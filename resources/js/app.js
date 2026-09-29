@@ -13,18 +13,10 @@ document.querySelectorAll('.submenu-toggle').forEach(button => button.addEventLi
     button.parentElement.classList.toggle('submenu-open', expanded);
 }));
 
-if (document.querySelector('[data-editor]')) import('./editor').then(({ initEditors }) => initEditors());
+if (document.querySelector('[data-editor]')) import('./editor-loader').then(({ initEditors }) => initEditors());
 if (document.querySelector('[data-menu-editor]')) import('./menu').then(({ initMenu }) => initMenu());
-document.querySelectorAll('[data-add-tag]').forEach(button => button.addEventListener('click', () => {
-    const group = button.closest('.input-group');
-    const input = group.querySelector('[data-new-tag]');
-    const select = group.parentElement.querySelector('[data-tags]');
-    const name = input.value.trim();
-    if (!name) return;
-    let option = [...select.options].find(o => o.textContent === name);
-    if (!option) { option = new Option(name, `new:${name}`); select.add(option); }
-    option.selected = true; input.value = '';
-}));
+if (document.querySelector('.admin-body')) import('./publishing').then(({ initPublishing }) => initPublishing());
+if (document.querySelector('[data-copy-link]')) import('./copy-link').then(({ initCopyLinks }) => initCopyLinks());
 
 const readStored = (key, fallback = {}) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 const saveStored = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };

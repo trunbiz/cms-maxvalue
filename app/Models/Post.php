@@ -18,6 +18,11 @@ class Post extends Model
         return $this->belongsTo(Category::class)->select(['id', 'name', 'slug']);
     }
 
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class)->select(['categories.id', 'name', 'slug']);
+    }
+
     public function series()
     {
         return $this->belongsTo(Series::class)->select(['id', 'title', 'slug', 'status']);

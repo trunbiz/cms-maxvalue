@@ -6,10 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\BulkDeleteRequest;
 use App\Http\Requests\ChapterImportRequest;
 use App\Http\Requests\ConfirmImportRequest;
-use App\Models\Category;
 use App\Models\Post;
-use App\Models\Series;
-use App\Models\Tag;
 use App\Services\ChapterImportService;
 use App\Services\MediaService;
 use App\Services\ResourceService;
@@ -20,7 +17,7 @@ class ChapterImportController extends Controller
 {
     public function create()
     {
-        return view('admin.import', ['series' => Series::select(['id', 'title'])->get(), 'categories' => Category::select(['id', 'name'])->get(), 'tags' => Tag::select(['id', 'name'])->get()]);
+        return redirect('/admin/posts/create?mode=import');
     }
 
     public function preview(ChapterImportRequest $request, ChapterImportService $service, MediaService $media)
@@ -33,6 +30,10 @@ class ChapterImportController extends Controller
         }
         $token = (string) Str::uuid();
         Cache::put('import.'.$request->user()->id.'.'.$token, compact('preview', 'options'), now()->addHour());
+
+        if ($request->expectsJson()) {
+            return response()->json(['token' => $token, 'html' => view('admin.chapter-preview', compact('preview', 'options'))->render()]);
+        }
 
         return view('admin.import-preview', compact('preview', 'token', 'options'));
     }

@@ -1,25 +1,80 @@
 @extends('admin.layout')
 @section('title',($record->exists?'Edit: ':'New: ').$definition['label'])
 @section('actions')
-@if($record->exists && ($resource==='pages'||($resource==='posts'&&$record->type==='normal')))
-<a href="/admin/{{ $resource }}/{{ $record->id }}/preview" target="_blank" rel="noopener" class="btn btn-outline-primary">Preview saved content ↗</a>
-@endif
+<div class="d-flex flex-wrap gap-2">
+    @if($record->exists && ($resource==='pages'||($resource==='posts'&&$record->type==='normal')))
+        <a href="/admin/{{ $resource }}/{{ $record->id }}/preview" target="_blank" rel="noopener" class="btn btn-outline-primary">Preview saved content</a>
+    @endif
+    @if($record->exists && $resource==='posts')<button type="button" class="btn btn-outline-secondary" data-copy-link="{{ post_url($record) }}">Copy link</button>@endif
+</div>
 @endsection
 @section('content')
-@if($resource==='pages')<div class="alert alert-info small">Publication templates support [[site_name]], [[publisher_name]], [[contact_email]], and [[site_url]]. These are filled from Settings when displayed. Review the text and your real practices before publishing.</div>@endif
-@if($resource==='posts')<div class="alert alert-info small">Write an original article, add an accurate byline and description, and save a draft to preview it. Only published articles whose publication date has arrived appear on the public website.</div>@endif
-<form method="post" enctype="multipart/form-data" action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="card border-0 shadow-sm p-4">@csrf @if($record->exists) @method('PUT') @endif
-<div class="row g-4">@foreach($definition['fields'] as $field=>$label)
-@php($value=old($field,$field==='content' && $resource==='posts' ? $record->content?->content : $record->getAttribute($field)))
-<div class="{{ in_array($field,['content','description','excerpt','modules','tags'])?'col-12':'col-md-6' }}"><label class="form-label" for="field-{{ $field }}">{{ $label }}</label>
-@if($field==='modules')<div class="d-flex flex-wrap gap-3">@foreach(config('modules') as $key=>$module)<label class="form-check"><input class="form-check-input" type="checkbox" name="modules[]" value="{{ $key }}" @checked(in_array($key,old('modules',$record->modules??[])))><span class="form-check-label">{{ $module }}</span></label>@endforeach</div>
-@elseif($field==='tags')<select class="form-select" id="field-tags" name="tags[]" multiple data-tags>@foreach($tags as $tag)<option value="{{ $tag->id }}" @selected(in_array($tag->id,old('tags',$record->exists?$record->tags->pluck('id')->all():[])))>{{ $tag->name }}</option>@endforeach</select><div class="input-group mt-2"><input class="form-control" data-new-tag placeholder="Enter a new tag" aria-label="New tag name"><button type="button" class="btn btn-outline-secondary" data-add-tag>Add tag</button></div><small class="text-secondary">Hold Ctrl or Command to select multiple tags.</small>
-@elseif(in_array($field,['role_id','category_id','series_id']))<select class="form-select" name="{{ $field }}" id="field-{{ $field }}"><option value="">— Select —</option>@foreach($field==='role_id'?$roles:($field==='category_id'?$categories:$series) as $option)<option value="{{ $option->id }}" @selected((string)$value===(string)$option->id)>{{ $option->name ?? $option->title }}</option>@endforeach</select>
-@elseif($field==='status')<select class="form-select" name="status" id="field-status"><option value="draft" @selected($value==='draft')>Draft</option><option value="published" @selected($value==='published')>Publish</option></select>
-@elseif($field==='type')<div class="d-flex gap-4">@foreach(['normal'=>'Standard article','chapter'=>'Single chapter'] as $key=>$text)<label><input type="radio" name="type" value="{{ $key }}" @checked(($value??'normal')===$key)> {{ $text }}</label>@endforeach</div><a class="small" href="/admin/import">Import a manuscript and split it into chapters →</a>
-@elseif($field==='image')<input class="form-control" type="file" name="image" id="field-image" accept="image/jpeg,image/png,image/webp,image/gif">@if($record->image)<img src="{{ media_url($record->image) }}" loading="lazy" class="mt-2 rounded" width="90" alt="Current image">@endif
-@elseif(in_array($field,['content','description','excerpt','seo_description']))<textarea class="form-control" id="field-{{ $field }}" name="{{ $field }}" rows="{{ $field==='content'?14:4 }}" @if($field==='content') data-editor @endif>{{ $field==='content' ? content_html($value) : $value }}</textarea>
-@else<input class="form-control" id="field-{{ $field }}" name="{{ $field }}" type="{{ $field==='password'?'password':($field==='chapter_number'?'number':($field==='published_at'?'datetime-local':'text')) }}" value="{{ $field==='password'?'':($field==='published_at' && $value instanceof \Carbon\Carbon ? $value->format('Y-m-d\TH:i'):$value) }}" @if($field==='password') autocomplete="new-password" @endif>@if($field==='password' && $record->exists)<small class="text-secondary">Leave blank to keep the current password.</small>@endif
-@endif</div>@endforeach</div><div class="d-flex gap-2 mt-4"><button class="btn btn-primary px-4">Save changes</button><a class="btn btn-light" href="/admin/{{ $resource }}">Back</a></div></form>
+@if($resource==='pages')<div class="alert alert-info small">Templates support [[site_name]], [[publisher_name]], [[contact_email]], and [[site_url]]. Review the text and your real practices before publishing.</div>@endif
+@php
+    $isPost=$resource==='posts';
+    $isChapter=$isPost && $record->exists && $record->type==='chapter';
+    $importMode=$isPost && !$record->exists && (old('compose_mode',request('mode'))==='import');
+    $groups=[
+        'Content'=>array_intersect_key($definition['fields'],array_flip(['name','title','username','password','role_id','modules','description','excerpt','content'])),
+        'Organization'=>array_intersect_key($definition['fields'],array_flip(['category_id','tags'])),
+        'Featured image'=>array_intersect_key($definition['fields'],array_flip(['image'])),
+        'Publishing'=>array_intersect_key($definition['fields'],array_flip(['status','published_at'])),
+        'Search & link'=>array_intersect_key($definition['fields'],array_flip(['slug','seo_title','seo_keywords','seo_description'])),
+    ];
+@endphp
+<form method="post" enctype="multipart/form-data" action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form" @if($isPost && !$record->exists) data-composer @endif>
+    @csrf @if($record->exists) @method('PUT') @endif
+    <noscript><div class="alert alert-warning">Enable JavaScript to use the rich text editor, image previews and chapter analysis.</div></noscript>
+    @if($isPost)
+        <input type="hidden" name="type" value="{{ $isChapter?'chapter':'normal' }}">
+        @if($isChapter)
+            <div class="alert alert-light border">Editing chapter {{ $record->chapter_number }} of <strong>{{ $record->series?->title }}</strong>. Chapter order is managed by the manuscript import.</div>
+        @elseif(!$record->exists)
+            <section class="editor-section mb-4">
+                <h2 class="section-title">Content type</h2>
+                <div class="content-mode-grid">
+                    <label class="content-mode"><input class="form-check-input" type="radio" name="compose_mode" value="normal" @checked(!$importMode)><span><strong>Standard article</strong><small>Write and publish one article.</small></span></label>
+                    <label class="content-mode"><input class="form-check-input" type="radio" name="compose_mode" value="import" @checked($importMode)><span><strong>Split text into chapters</strong><small>Paste a manuscript, analyze, then save.</small></span></label>
+                </div>
+            </section>
+        @endif
+    @endif
+    <div class="publishing-grid @if(!$groups['Publishing'] && !$groups['Organization'] && !$groups['Featured image']) publishing-grid-wide @endif">
+        <div class="publishing-main">
+            <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
+                <h2 class="section-title">Content</h2>
+                @foreach($groups['Content'] as $field=>$label) @include('admin.fields.input') @endforeach
+            </section>
+            @if($isPost && !$record->exists)
+                <section class="editor-section" data-import-content @if(!$importMode) hidden @endif>
+                    <h2 class="section-title">Manuscript</h2>
+                    @include('admin.fields.input',['field'=>'series_id','label'=>'Story'])
+                    <label class="form-label" for="manuscript">Intro/Description</label>
+                    <p class="import-guidance" id="manuscript-help">Paste the full content into Intro/Description, put the story name before CHAPTER 1, and mark each chapter with CHAPTER X - Title. With no series selected, the first line names the series and the remaining lines become its description.</p>
+                    <textarea class="form-control" id="manuscript" name="manuscript" rows="18" data-editor aria-describedby="manuscript-help">{{ old('manuscript') }}</textarea>
+                    <p class="form-text">Images and rich formatting are preserved in the chapter previews.</p>
+                    <details class="import-options mt-4"><summary>Import options</summary><div class="pt-3">
+                        <label class="form-label" for="duplicates">Existing chapter numbers</label><select class="form-select mb-3" id="duplicates" name="duplicates"><option value="skip">Keep existing chapters (skip duplicates)</option><option value="overwrite">Replace existing chapters</option></select>
+                        <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="update_description" value="1"><span class="form-check-label">Update the selected story description</span></label>
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image" value="1"><span class="form-check-label">Use the cover image for every chapter</span></label>
+                    </div></details>
+                    <button type="button" class="btn btn-outline-primary mt-4" data-analyze>Analyze chapters</button>
+                    <div class="mt-3" data-import-message role="status" aria-live="polite"></div>
+                </section>
+                <section class="editor-section mt-4" data-chapter-preview aria-label="Chapter previews" hidden></section>
+            @endif
+            @if($groups['Search & link'])
+                <details class="editor-section mt-4" data-standard-seo><summary class="section-title mb-0">Search &amp; link <span class="small fw-normal text-secondary">Optional settings</span></summary><div class="pt-4">@foreach($groups['Search & link'] as $field=>$label) @include('admin.fields.input') @endforeach</div></details>
+            @endif
+        </div>
+        <aside class="publishing-aside">
+            @foreach(['Publishing','Organization','Featured image'] as $group)
+                @if($groups[$group])<section class="editor-section mb-4"><h2 class="section-title">{{ $group }}</h2>@foreach($groups[$group] as $field=>$label) @include('admin.fields.input') @endforeach</section>@endif
+            @endforeach
+        </aside>
+    </div>
+    <div class="save-bar"><span class="small text-secondary me-auto" data-save-hint>{{ $record->exists?'Save your changes when ready.':'Save as a draft or choose Published in Publishing.' }}</span><a class="btn btn-light" href="/admin/{{ $resource }}">Back</a><button class="btn btn-primary px-4" data-save>{{ $importMode?'Save chapters':'Save changes' }}</button></div>
+</form>
+@if($isPost && !$record->exists)<form method="post" action="/admin/import" data-import-confirm hidden>@csrf<input type="hidden" name="token" value=""></form>@endif
 @if($resource==='menus' && $record->exists) @include('admin.menu-editor') @endif
 @endsection

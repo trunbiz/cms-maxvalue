@@ -18,6 +18,11 @@ class Series extends Model
         return $this->belongsTo(Category::class)->select(['id', 'name', 'slug']);
     }
 
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'category_series')->select(['categories.id', 'name', 'slug']);
+    }
+
     public function chapters()
     {
         return $this->hasMany(Post::class);
