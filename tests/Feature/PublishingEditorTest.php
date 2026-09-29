@@ -114,4 +114,44 @@ class PublishingEditorTest extends TestCase
         $this->postJson('/admin/import/preview', ['content' => 'No chapter headings', 'status' => 'published', 'duplicates' => 'skip'])->assertUnprocessable()->assertJsonValidationErrors('content');
         $this->post('/admin/posts', ['title' => 'Invalid category', 'content' => 'Body', 'type' => 'normal', 'status' => 'draft', 'category_ids' => [999999]])->assertSessionHasErrors('category_ids.0');
     }
+
+    public function test_publishing_a_chapter_requires_explicit_publication_of_its_draft_story(): void
+    {
+        $this->actingAs($this->admin());
+        $series = Series::factory()->create(['status' => 'draft']);
+        $chapter = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 1, 'status' => 'draft']);
+        $other = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 2, 'status' => 'draft']);
+        $data = ['title' => 'First chapter', 'content' => '<p>Chapter body</p>', 'status' => 'published'];
+        $this->get('/admin/posts/'.$chapter->id.'/edit')->assertSee('Publish the story with this chapter');
+        $this->put('/admin/posts/'.$chapter->id, $data)->assertSessionHasErrors('status');
+        $this->assertSame('draft', $chapter->fresh()->status);
+        $this->put('/admin/posts/'.$chapter->id, $data + ['publish_series' => '1'])->assertSessionHasNoErrors();
+        $this->assertSame('published', $series->fresh()->status);
+        $this->assertSame('draft', $other->fresh()->status);
+        $this->get(post_url($chapter->fresh()))->assertOk()->assertSee('Chapter body');
+        $this->get(post_url($other))->assertNotFound();
+    }
+
+    public function test_import_can_share_existing_story_cover_and_overwrite_preserves_images(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('series/cover.webp', 'test image');
+        $this->actingAs($this->admin());
+        $series = Series::factory()->create(['status' => 'published', 'image' => 'series/cover.webp']);
+        $data = ['series_id' => $series->id, 'content' => "CHAPTER 1 - First\nFirst body\nCHAPTER 2 - Second\nSecond body", 'status' => 'published', 'duplicates' => 'overwrite', 'share_image' => '1'];
+        $preview = $this->postJson('/admin/import/preview', $data)->assertOk();
+        $this->assertStringContainsString(media_url('series/cover.webp'), $preview->json('html'));
+        $this->post('/admin/import', ['token' => $preview->json('token')])->assertSessionHasNoErrors();
+        $chapters = Post::select(['id', 'type', 'slug', 'series_id', 'image'])->where('series_id', $series->id)->with('series')->get();
+        $this->assertCount(2, $chapters);
+        foreach ($chapters as $chapter) {
+            $this->assertSame('series/cover.webp', $chapter->image);
+            $this->get(post_url($chapter))->assertOk()->assertSee('<img class="article-image mb-4"', false)->assertSee(media_url('series/cover.webp'), false);
+        }
+        $data['share_image'] = '0';
+        $preview = $this->postJson('/admin/import/preview', $data)->assertOk();
+        $this->post('/admin/import', ['token' => $preview->json('token')])->assertSessionHasNoErrors();
+        $this->assertSame(2, Post::where('series_id', $series->id)->where('image', 'series/cover.webp')->count());
+        Storage::disk('public')->assertExists('series/cover.webp');
+    }
 }

@@ -76,7 +76,7 @@ export function initPublishing() {
     };
     const toggle = () => {
         const importing = importMode();
-        [[standard, importing], [manuscript, !importing], [seo, importing], [publicationDate, importing]].forEach(([section, hidden]) => {
+        [[standard, importing], [manuscript, !importing], [form.querySelector('[data-import-image]'), !importing], [seo, importing], [publicationDate, importing]].forEach(([section, hidden]) => {
             if (!section) return;
             section.hidden = hidden;
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });

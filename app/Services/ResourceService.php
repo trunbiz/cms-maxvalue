@@ -58,6 +58,10 @@ class ResourceService
                 $categoryIds = $data['category_ids'] ?? array_filter([$data['category_id'] ?? null]);
                 unset($data['tags'], $data['category_ids']);
                 if ($resource === 'posts') {
+                    if ($data['type'] === 'chapter' && $data['status'] === 'published' && ! empty($data['publish_series'])) {
+                        Series::whereKey($data['series_id'])->update(['status' => 'published', 'updated_at' => now()]);
+                    }
+                    unset($data['publish_series']);
                     unset($data['content']);
                     if ($record->exists && $record->is_demo && clean_html($content) !== \App\Models\PostContent::where('post_id', $record->id)->value('content')) {
                         $data['is_demo'] = false;

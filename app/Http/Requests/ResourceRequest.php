@@ -43,6 +43,7 @@ class ResourceRequest extends FormRequest
             $rules['category_ids.*'] = 'integer|distinct|exists:categories,id';
         }
         if ($r === 'posts') {
+            $rules['publish_series'] = 'nullable|boolean';
             $rules['type'] = ['required', Rule::in($id ? ['normal', 'chapter'] : ['normal'])];
             $rules['chapter_number'] = $base['chapter_number'];
         }
@@ -60,6 +61,10 @@ class ResourceRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            if ($this->route('resource') === 'posts' && $this->input('type') === 'chapter' && $this->input('status') === 'published'
+                && ! $this->boolean('publish_series') && \App\Models\Series::whereKey($this->input('series_id'))->where('status', 'draft')->exists()) {
+                $validator->errors()->add('status', 'The story is still a draft. Select "Publish the story with this chapter" or publish the story first.');
+            }
             if ($this->route('resource') === 'pages' && $this->input('status') === 'published'
                 && preg_match('/\[\[(publisher_name|contact_email|site_url)\]\]/', (string) $this->input('content'))
                 && ! app(\App\Services\PublisherService::class)->profileComplete(app(\App\Services\SiteService::class)->settings())) {

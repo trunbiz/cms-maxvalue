@@ -7,6 +7,7 @@ use App\Http\Requests\BulkDeleteRequest;
 use App\Http\Requests\ChapterImportRequest;
 use App\Http\Requests\ConfirmImportRequest;
 use App\Models\Post;
+use App\Models\Series;
 use App\Services\ChapterImportService;
 use App\Services\MediaService;
 use App\Services\ResourceService;
@@ -28,14 +29,15 @@ class ChapterImportController extends Controller
         if ($request->hasFile('image')) {
             $options['image'] = $media->upload($request->file('image'), 'imports');
         }
+        $coverImage = ! empty($options['share_image']) ? ($options['image'] ?? (isset($options['series_id']) ? Series::whereKey($options['series_id'])->value('image') : null)) : null;
         $token = (string) Str::uuid();
         Cache::put('import.'.$request->user()->id.'.'.$token, compact('preview', 'options'), now()->addHour());
 
         if ($request->expectsJson()) {
-            return response()->json(['token' => $token, 'html' => view('admin.chapter-preview', compact('preview', 'options'))->render()]);
+            return response()->json(['token' => $token, 'html' => view('admin.chapter-preview', compact('preview', 'options', 'coverImage'))->render()]);
         }
 
-        return view('admin.import-preview', compact('preview', 'token', 'options'));
+        return view('admin.import-preview', compact('preview', 'token', 'options', 'coverImage'));
     }
 
     public function store(ConfirmImportRequest $request, ChapterImportService $service)

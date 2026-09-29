@@ -167,7 +167,8 @@ class ChapterImportService
                     continue;
                 }
                 $slug = $existing[$number]->slug ?? $series->slug.'-'.$number.'-'.Str::lower(Str::random(6));
-                $rows[$number] = ['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => ! empty($options['share_image']) ? ($options['image'] ?? null) : null, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
+                $image = ! empty($options['share_image']) ? $series->image : ($existing[$number]->image ?? null);
+                $rows[$number] = ['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => $image, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
                 $contents[$number] = clean_html($chapter['content']);
                 if (isset($existing[$number]) && $existing[$number]->image) {
                     $oldImages[] = $existing[$number]->image;

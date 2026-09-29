@@ -56,7 +56,6 @@
                     <details class="import-options mt-4"><summary>Import options</summary><div class="pt-3">
                         <label class="form-label" for="duplicates">Existing chapter numbers</label><select class="form-select mb-3" id="duplicates" name="duplicates"><option value="skip">Keep existing chapters (skip duplicates)</option><option value="overwrite">Replace existing chapters</option></select>
                         <label class="form-check mb-2"><input class="form-check-input" type="checkbox" name="update_description" value="1"><span class="form-check-label">Update the selected story description</span></label>
-                        <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image" value="1"><span class="form-check-label">Use the cover image for every chapter</span></label>
                     </div></details>
                     <button type="button" class="btn btn-outline-primary mt-4" data-analyze>Analyze chapters</button>
                     <div class="mt-3" data-import-message role="status" aria-live="polite"></div>
@@ -69,7 +68,26 @@
         </div>
         <aside class="publishing-aside">
             @foreach(['Publishing','Organization','Featured image'] as $group)
-                @if($groups[$group])<section class="editor-section mb-4"><h2 class="section-title">{{ $group }}</h2>@foreach($groups[$group] as $field=>$label) @include('admin.fields.input') @endforeach</section>@endif
+                @if($groups[$group])
+                    <section class="editor-section mb-4">
+                        <h2 class="section-title">{{ $group }}</h2>
+                        @foreach($groups[$group] as $field=>$label) @include('admin.fields.input') @endforeach
+                        @if($group==='Featured image' && $isPost && !$record->exists)
+                            <div class="mt-3" data-import-image @if(!$importMode) hidden @endif>
+                                <input type="hidden" name="share_image" value="0">
+                                <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image" value="1" @checked(old('share_image','1')==='1')><span class="form-check-label">Use this cover for all imported chapters</span></label>
+                                <p class="form-text mb-0">If no new image is selected, use the selected story's existing cover. The image appears on each chapter page.</p>
+                            </div>
+                        @endif
+                        @if($group==='Publishing' && $isChapter && $record->series?->status==='draft')
+                            <div class="alert alert-warning small mt-3 mb-0">
+                                <p>This story is still a draft. Publishing a chapter also requires its story to be published.</p>
+                                <label class="form-check"><input class="form-check-input" type="checkbox" name="publish_series" value="1" @checked(old('publish_series'))><span class="form-check-label">Publish the story with this chapter</span></label>
+                                <p class="mt-2 mb-0">Other draft chapters will remain private.</p>
+                            </div>
+                        @endif
+                    </section>
+                @endif
             @endforeach
         </aside>
     </div>

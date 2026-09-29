@@ -17,11 +17,14 @@ Author names are no longer collected in the form or included in the article byli
 1. Choose **Split text into chapters** on the same creation screen. `/admin/import` redirects here.
 2. Select an existing story or leave it empty to create one. Paste the manuscript into **Intro/Description**. For a new story, the first line is its title; subsequent introductory lines form the description. Mark chapter boundaries with `CHAPTER X - Title`.
 3. Set categories, tags, cover image, publication status, and any duplicate-number options.
+   **Use this cover for all imported chapters** is visible beneath the image picker and selected by default. With an existing story and no new upload, it uses that story's cover. The analysis preview shows the shared cover, and each saved chapter displays it. Overwriting chapters without sharing a cover preserves their existing images.
 4. Click **Analyze chapters**. The story summary and expandable, full-content chapter previews appear directly below the manuscript. Analysis does not create database posts.
 5. Review the chapters. To correct them, edit the manuscript and analyze again. Changing the content or saved settings invalidates the previous preview. Filtering choice lists does not invalidate it.
 6. Choose **Published** before analysis if the chapters should go live, then click **Save chapters** once. The reviewed set is saved transactionally. Draft remains available for work in progress.
 
 There is no Single chapter creation option or manual chapter-number input. Existing chapters can still be edited; their story and chapter number are preserved by the server. Duplicate handling supports keeping or replacing existing chapters. An analyzed preview expires after one hour and can be used once by its owner.
+
+A published chapter is public only when its parent story is also published. When editing a chapter under a draft story, the Publishing panel offers **Publish the story with this chapter**. Saving as Published without resolving the draft parent shows a validation message. Publishing the parent does not publish its other draft chapters.
 
 ## Validation
 
