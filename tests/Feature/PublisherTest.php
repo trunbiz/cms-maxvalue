@@ -81,7 +81,7 @@ class PublisherTest extends TestCase
         $response = $this->get('/admin/posts/'.$post->id.'/preview')->assertOk()->assertSee('Private preview')->assertDontSee('A Real Writer')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $post->update(['status' => 'published']);
-        $this->get('/articles/'.$post->slug)->assertOk()->assertDontSee('A Real Writer')->assertDontSee('"author":', false)->assertSee('Copy link')->assertSee('min read')->assertSee('"@type":"Article"', false)->assertSee('datePublished')->assertSee('dateModified');
+        $this->get('/articles/'.$post->slug)->assertOk()->assertDontSee('A Real Writer')->assertDontSee('"author":', false)->assertDontSee('data-copy-link', false)->assertSee('min read')->assertSee('"@type":"Article"', false)->assertSee('datePublished')->assertSee('dateModified');
     }
 
     public function test_legacy_urls_redirect_and_search_is_noindex(): void

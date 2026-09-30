@@ -82,7 +82,7 @@ export function initPublishing() {
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });
         });
         save.textContent = importing ? 'Save chapters' : 'Save changes';
-        hint.textContent = importing ? 'Analyze, review the chapters, then save. Choose Published to publish them.' : 'Save as a draft or choose Published in Publishing.';
+        hint.textContent = importing ? 'Analyze, review the chapters, then save. Choose Published to publish them.' : 'New content is public by default. Choose Draft to keep it private.';
         invalidate();
     };
     form.querySelectorAll('[name="compose_mode"]').forEach(input => input.addEventListener('change', toggle));

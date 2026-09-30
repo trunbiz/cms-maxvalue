@@ -19,7 +19,7 @@
                     <span>Updated <time datetime="{{ $article->updated_at->toIso8601String() }}">{{ $article->updated_at->format('F j, Y') }}</time></span>
                 @endif
                 <span>{{ $readingMinutes??1 }} min read</span>
-                @unless($isPreview??false)<button type="button" class="btn btn-sm btn-outline-secondary" data-copy-link="{{ post_url($article) }}">Copy link</button>@endunless
+                
             </div>
         @elseif($article->updated_at)
             <p class="text-muted small mt-3">Last updated <time datetime="{{ $article->updated_at->toIso8601String() }}">{{ $article->updated_at->format('F j, Y') }}</time></p>

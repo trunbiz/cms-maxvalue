@@ -66,7 +66,12 @@ class ResourceController extends Controller
     {
         $model = $this->definition($resource)['model'];
 
-        return $this->form($resource, new $model);
+        $record = new $model;
+        if (isset($this->definition($resource)['fields']['status'])) {
+            $record->status = 'published';
+        }
+
+        return $this->form($resource, $record);
     }
 
     public function edit(string $resource, int $id)

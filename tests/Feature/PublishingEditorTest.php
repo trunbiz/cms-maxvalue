@@ -34,6 +34,29 @@ class PublishingEditorTest extends TestCase
             ->assertDontSee('Author name');
     }
 
+    public function test_creation_defaults_and_admin_actions(): void
+    {
+        $this->actingAs($this->admin());
+        foreach (['posts', 'series', 'pages'] as $resource) {
+            $this->get('/admin/'.$resource.'/create')->assertOk()
+                ->assertSee('value="published" selected', false);
+        }
+        $this->get('/admin/posts/create')->assertOk()
+            ->assertSee('value="import" checked', false)
+            ->assertSee('Publish content')->assertSee('Access management')
+            ->assertDontSee('Story library');
+        $this->get('/admin/posts/create?mode=normal')->assertOk()
+            ->assertSee('value="normal" checked', false);
+        $post = Post::factory()->create(['status' => 'draft']);
+        $this->get('/admin/posts/'.$post->id.'/edit')->assertOk()
+            ->assertSee('value="draft" selected', false);
+        $this->get('/admin/posts')->assertOk()
+            ->assertSee('title="Edit" aria-label="Edit"', false)
+            ->assertSee('title="Delete" aria-label="Delete"', false)
+            ->assertSee('title="Copy link" aria-label="Copy link"', false)
+            ->assertSee('href="'.post_url($post).'"', false);
+    }
+
     public function test_multiple_categories_are_saved_searchable_and_can_be_cleared(): void
     {
         $this->actingAs($this->admin());

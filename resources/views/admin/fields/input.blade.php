@@ -12,8 +12,8 @@
     @elseif(in_array($field,['role_id','series_id']))
         <select class="form-select" name="{{ $field }}" id="field-{{ $field }}"><option value="">{{ $field==='series_id'?'Create a new story from the manuscript':'Select a role' }}</option>@foreach($field==='role_id'?$roles:$series as $option)<option value="{{ $option->id }}" @selected((string)$value===(string)$option->id)>{{ $option->name??$option->title }}</option>@endforeach</select>
     @elseif($field==='status')
-        <select class="form-select" name="status" id="field-status"><option value="draft" @selected(($value??'draft')==='draft')>Draft</option><option value="published" @selected($value==='published')>Published</option></select>
-        <p class="form-text mb-0">Choose Published to make the saved content public.</p>
+        <select class="form-select" name="status" id="field-status"><option value="draft" @selected(($value??'published')==='draft')>Draft</option><option value="published" @selected(($value??'published')==='published')>Public</option></select>
+        <p class="form-text mb-0">Public content is visible to readers. Choose Draft to keep it private.</p>
     @elseif($field==='image')
         @include('admin.fields.image',['name'=>'image','label'=>$label,'path'=>$record->image])
     @elseif(in_array($field,['content','description','excerpt','seo_description']))

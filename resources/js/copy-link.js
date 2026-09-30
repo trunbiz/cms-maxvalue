@@ -1,6 +1,7 @@
 export function initCopyLinks() {
     document.querySelectorAll('[data-copy-link]').forEach(button => button.addEventListener('click', async () => {
-        const original = button.textContent;
+        const originalTitle = button.title;
+        const status = button.parentElement.querySelector('[data-copy-status]');
         const value = button.dataset.copyLink;
         try {
             if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(value);
@@ -10,8 +11,10 @@ export function initCopyLinks() {
                 const copied = document.execCommand('copy'); input.remove(); button.focus();
                 if (!copied) throw new Error('Clipboard unavailable');
             }
-            button.textContent = 'Link copied!'; button.setAttribute('aria-live', 'polite');
-            setTimeout(() => { button.textContent = original; }, 2000);
+            button.title = 'Link copied!';
+            button.classList.add('text-success');
+            if (status) status.textContent = 'Link copied!';
+            setTimeout(() => { button.title = originalTitle; button.classList.remove('text-success'); if (status) status.textContent = ''; }, 2000);
         } catch { window.prompt('Copy this link:', value); }
     }));
 }

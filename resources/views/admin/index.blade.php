@@ -1,6 +1,6 @@
 @extends('admin.layout')
 @section('title',$definition['label'])
-@section('actions')<a class="btn btn-primary" href="/admin/{{ $resource }}/create">+ Add new</a>@endsection
+@section('actions')<a class="btn btn-primary icon-button" title="Add new" aria-label="Add new" href="/admin/{{ $resource }}/create">@include('admin.icon',['name'=>'add'])</a>@endsection
 @section('content')
 <form method="get" class="d-flex gap-2 mb-4">
     <input class="form-control" name="q" value="{{ request('q') }}" placeholder="Search..." aria-label="Search">
@@ -20,10 +20,10 @@
                 @if(in_array($resource,['posts','series','pages']))<td><span class="badge {{ $record->status==='published'?'text-bg-success':'text-bg-secondary' }}">{{ $record->status==='published'?'Published':'Draft' }}</span></td>@endif
                 @if(in_array($resource,['series','tags']))<td>{{ $record->chapters_count??$record->posts_count }}</td>@endif
                 <td><div class="d-flex gap-2 justify-content-end">
-                    @if($resource==='series')<a class="btn btn-sm btn-outline-primary text-nowrap" href="/admin/posts?series_id={{ $record->id }}">Chapters</a>@endif
-                    @if($resource==='posts')<button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-copy-link="{{ post_url($record) }}" title="{{ $record->status==='draft'?'Public link becomes available after publishing':'Copy the public article link' }}">Copy link</button>@endif
-                    <a class="btn btn-sm btn-light" href="/admin/{{ $resource }}/{{ $record->id }}/edit">Edit</a>
-                    <form method="post" action="/admin/{{ $resource }}/{{ $record->id }}" data-confirm>@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Delete</button></form>
+                    @if($resource==='series')<a class="btn btn-sm btn-outline-primary icon-button" title="Chapters" aria-label="Chapters" href="/admin/posts?series_id={{ $record->id }}">@include('admin.icon',['name'=>'chapters'])</a>@endif
+                    @if($resource==='posts')@include('admin.copy-link',['url'=>post_url($record)])@endif
+                    <a class="btn btn-sm btn-light icon-button" title="Edit" aria-label="Edit" href="/admin/{{ $resource }}/{{ $record->id }}/edit">@include('admin.icon',['name'=>'edit'])</a>
+                    <form method="post" action="/admin/{{ $resource }}/{{ $record->id }}" data-confirm>@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger icon-button" title="Delete" aria-label="Delete">@include('admin.icon',['name'=>'delete'])</button></form>
                 </div></td>
             </tr>
         @empty

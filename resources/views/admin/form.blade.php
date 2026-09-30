@@ -3,9 +3,9 @@
 @section('actions')
 <div class="d-flex flex-wrap gap-2">
     @if($record->exists && ($resource==='pages'||($resource==='posts'&&$record->type==='normal')))
-        <a href="/admin/{{ $resource }}/{{ $record->id }}/preview" target="_blank" rel="noopener" class="btn btn-outline-primary">Preview saved content</a>
+        <a href="/admin/{{ $resource }}/{{ $record->id }}/preview" target="_blank" rel="noopener" class="btn btn-outline-primary icon-button" title="Preview saved content" aria-label="Preview saved content">@include('admin.icon',['name'=>'preview'])</a>
     @endif
-    @if($record->exists && $resource==='posts')<button type="button" class="btn btn-outline-secondary" data-copy-link="{{ post_url($record) }}">Copy link</button>@endif
+    @if($record->exists && $resource==='posts')@include('admin.copy-link',['url'=>post_url($record)])@endif
 </div>
 @endsection
 @section('content')
@@ -13,7 +13,7 @@
 @php
     $isPost=$resource==='posts';
     $isChapter=$isPost && $record->exists && $record->type==='chapter';
-    $importMode=$isPost && !$record->exists && (old('compose_mode',request('mode'))==='import');
+    $importMode=$isPost && !$record->exists && (old('compose_mode',request('mode','import'))==='import');
     $groups=[
         'Content'=>array_intersect_key($definition['fields'],array_flip(['name','title','username','password','role_id','modules','description','excerpt','content'])),
         'Organization'=>array_intersect_key($definition['fields'],array_flip(['category_id','tags'])),
@@ -91,7 +91,7 @@
             @endforeach
         </aside>
     </div>
-    <div class="save-bar"><span class="small text-secondary me-auto" data-save-hint>{{ $record->exists?'Save your changes when ready.':'Save as a draft or choose Published in Publishing.' }}</span><a class="btn btn-light" href="/admin/{{ $resource }}">Back</a><button class="btn btn-primary px-4" data-save>{{ $importMode?'Save chapters':'Save changes' }}</button></div>
+    <div class="save-bar"><span class="small text-secondary me-auto" data-save-hint>{{ $record->exists?'Save your changes when ready.':'New content is public by default. Choose Draft to keep it private.' }}</span><a class="btn btn-light" href="/admin/{{ $resource }}">Back</a><button class="btn btn-primary px-4" data-save>{{ $importMode?'Save chapters':'Save changes' }}</button></div>
 </form>
 @if($isPost && !$record->exists)<form method="post" action="/admin/import" data-import-confirm hidden>@csrf<input type="hidden" name="token" value=""></form>@endif
 @if($resource==='menus' && $record->exists) @include('admin.menu-editor') @endif
