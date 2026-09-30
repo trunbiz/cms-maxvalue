@@ -44,6 +44,13 @@
             @if($isPost && !$record->exists)
                 <section class="editor-section mb-4">
                     <h2 class="section-title">Title &amp; description</h2>
+                    @include('admin.fields.input',['field'=>'image','label'=>'Featured image'])
+                    <div class="mt-3" data-import-image @if(!$importMode) hidden @endif>
+                        <input type="hidden" name="share_image" value="0">
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image" value="1" @checked(old('share_image','1')==='1')><span class="form-check-label">Use this cover for all imported chapters</span></label>
+                        <p class="form-text mb-0">If no new image is selected, use the selected story's existing cover. The image appears on each chapter page.</p>
+                    </div>
+                    <hr class="my-4">
                     @include('admin.fields.input',['field'=>'title','label'=>'Title'])
                     @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
                     <p class="form-text mb-0">For chapter imports, these fields describe the Series. Leave them blank to use the manuscript introduction.</p>
@@ -76,17 +83,10 @@
         </div>
         <aside class="publishing-aside">
             @foreach(['Publishing','Organization','Featured image'] as $group)
-                @if($groups[$group])
+                @if($groups[$group] && !($group==='Featured image' && $isPost && !$record->exists))
                     <section class="editor-section mb-4">
                         <h2 class="section-title">{{ $group }}</h2>
                         @foreach($groups[$group] as $field=>$label) @include('admin.fields.input') @endforeach
-                        @if($group==='Featured image' && $isPost && !$record->exists)
-                            <div class="mt-3" data-import-image @if(!$importMode) hidden @endif>
-                                <input type="hidden" name="share_image" value="0">
-                                <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image" value="1" @checked(old('share_image','1')==='1')><span class="form-check-label">Use this cover for all imported chapters</span></label>
-                                <p class="form-text mb-0">If no new image is selected, use the selected story's existing cover. The image appears on each chapter page.</p>
-                            </div>
-                        @endif
                         @if($group==='Publishing' && $isChapter && $record->series?->status==='draft')
                             <div class="alert alert-warning small mt-3 mb-0">
                                 <p>This story is still a draft. Publishing a chapter also requires its story to be published.</p>
