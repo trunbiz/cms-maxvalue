@@ -100,6 +100,53 @@ class PublishingEditorTest extends TestCase
         $this->post('/admin/import', ['token' => $response->json('token')])->assertStatus(419);
     }
 
+    public function test_import_saves_explicit_series_metadata_and_custom_slug(): void
+    {
+        $this->actingAs($this->admin());
+        $this->get('/admin/posts/create')->assertOk()->assertSee('Title &amp; description', false)
+            ->assertSee('name="excerpt"', false)->assertSee('name="slug"', false)
+            ->assertSee('name="seo_keywords"', false)->assertDontSee('data-standard-seo', false);
+        $data = ['title' => 'A separate title', 'description' => 'A separate description',
+            'slug' => 'custom-series-link', 'seo_title' => 'Search title', 'seo_keywords' => 'fiction, reading',
+            'seo_description' => 'Search description', 'content' => "CHAPTER 1 - First\nChapter body.",
+            'status' => 'published', 'duplicates' => 'skip'];
+        $response = $this->postJson('/admin/import/preview', $data)->assertOk();
+        $this->assertStringContainsString('A separate title', $response->json('html'));
+        $this->assertStringContainsString('A separate description', $response->json('html'));
+        $this->post('/admin/import', ['token' => $response->json('token')])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('series', ['title' => $data['title'], 'description' => $data['description'],
+            'slug' => $data['slug'], 'seo_title' => $data['seo_title'],
+            'seo_keywords' => $data['seo_keywords'], 'seo_description' => $data['seo_description']]);
+        $this->postJson('/admin/import/preview', $data)->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $this->postJson('/admin/import/preview', array_replace($data, ['slug' => 'Invalid Slug']))
+            ->assertUnprocessable()->assertJsonValidationErrors('slug');
+    }
+
+    public function test_import_generates_a_unique_slug_only_when_left_blank(): void
+    {
+        $this->actingAs($this->admin());
+        $data = ['title' => 'Generated series link', 'slug' => '', 'content' => "CHAPTER 1 - First\nBody.",
+            'status' => 'published', 'duplicates' => 'skip'];
+        foreach (['generated-series-link', 'generated-series-link-2'] as $slug) {
+            $response = $this->postJson('/admin/import/preview', $data)->assertOk();
+            $this->post('/admin/import', ['token' => $response->json('token')])->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertDatabaseHas('series', ['title' => $data['title'], 'slug' => $slug]);
+        }
+    }
+
+    public function test_import_preserves_existing_series_slug_and_can_update_metadata(): void
+    {
+        $this->actingAs($this->admin());
+        $series = Series::factory()->create(['slug' => 'existing-series-link']);
+        $data = ['series_id' => $series->id, 'title' => 'Updated series title', 'description' => 'Updated description',
+            'update_description' => '1', 'seo_title' => 'Updated SEO', 'content' => "CHAPTER 1 - First\nBody.",
+            'status' => 'published', 'duplicates' => 'skip'];
+        $response = $this->postJson('/admin/import/preview', $data)->assertOk();
+        $this->post('/admin/import', ['token' => $response->json('token')])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('series', ['id' => $series->id, 'title' => 'Updated series title',
+            'slug' => 'existing-series-link', 'description' => 'Updated description', 'seo_title' => 'Updated SEO']);
+    }
+
     public function test_existing_chapter_keeps_number_and_story_without_manual_inputs(): void
     {
         $this->actingAs($this->admin());

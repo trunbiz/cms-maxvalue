@@ -11,7 +11,7 @@ class ChapterImportService
 {
     private const HEADING = '/^CHAPTER\s+(\d+)\s*[-–:]\s*(.+)$/iu';
 
-    public function preview(string $source, ?int $seriesId = null): array
+    public function preview(string $source, ?int $seriesId = null, array $metadata = []): array
     {
         $blocks = $this->blocks($source);
         $intro = [];
@@ -47,11 +47,15 @@ class ChapterImportService
             $this->fail('You can import up to 2,000 chapters at a time.');
         }
         $series = $seriesId ? Series::select(['id', 'title', 'description'])->findOrFail($seriesId) : null;
-        $title = $series?->title ?? trim(html_entity_decode(strip_tags(array_shift($intro) ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $manuscriptTitle = $series ? null : trim(html_entity_decode(strip_tags(array_shift($intro) ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $title = ! empty($metadata['title']) ? $metadata['title'] : ($series?->title ?? $manuscriptTitle);
         if ($title === '' || mb_strlen($title) > 255) {
             $this->fail('The first line before CHAPTER must be the story title (up to 255 characters).');
         }
         $description = trim(html_entity_decode(strip_tags(implode("\n", $intro)), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (! empty($metadata['description'])) {
+            $description = $metadata['description'];
+        }
         $existing = $series ? $series->chapters()->pluck('chapter_number')->all() : [];
         $seen = [];
         $warnings = [];
@@ -140,9 +144,20 @@ class ChapterImportService
     {
         $series = DB::transaction(function () use ($preview, $options) {
             $meta = ['category_id' => $options['category_id'] ?? null, 'status' => $options['status'], 'updated_at' => now(), 'is_demo' => false];
+            foreach (['seo_title', 'seo_keywords', 'seo_description'] as $field) {
+                if (array_key_exists($field, $options)) {
+                    $meta[$field] = $options[$field];
+                }
+            }
             $oldImages = [];
             if ($preview['series_id']) {
                 $series = Series::select(['id', 'title', 'slug', 'description', 'image', 'category_id', 'status'])->lockForUpdate()->findOrFail($preview['series_id']);
+                if (! empty($options['title'])) {
+                    $meta['title'] = $preview['title'];
+                }
+                if (! empty($options['slug'])) {
+                    $meta['slug'] = $this->seriesSlug($preview['title'], $options['slug'], $series->id);
+                }
                 if (! empty($options['update_description'])) {
                     $meta['description'] = $preview['description'];
                 }
@@ -152,7 +167,7 @@ class ChapterImportService
                 }
                 $series->update($meta);
             } else {
-                $series = Series::create($meta + ['title' => $preview['title'], 'slug' => Str::slug($preview['title']).'-'.Str::lower(Str::random(8)), 'description' => $preview['description'], 'image' => $options['image'] ?? null]);
+                $series = Series::create($meta + ['title' => $preview['title'], 'slug' => $this->seriesSlug($preview['title'], $options['slug'] ?? null), 'description' => $preview['description'], 'image' => $options['image'] ?? null]);
             }
             $tagIds = app(ResourceService::class)->tagIds($options['tags'] ?? []);
             app(ResourceService::class)->syncTags($series, $tagIds);
@@ -214,6 +229,28 @@ class ChapterImportService
         app(CacheInvalidator::class)->invalidate();
 
         return $series;
+    }
+
+    private function seriesSlug(string $title, ?string $customSlug, ?int $seriesId = null): string
+    {
+        $exists = fn (string $slug) => Series::where('slug', $slug)
+            ->when($seriesId, fn ($query) => $query->where('id', '!=', $seriesId))->exists();
+        if ($customSlug !== null && $customSlug !== '') {
+            if ($exists($customSlug)) {
+                throw ValidationException::withMessages(['slug' => 'This Series slug is already in use.']);
+            }
+
+            return $customSlug;
+        }
+        $base = substr(Str::slug($title) ?: 'series', 0, 240);
+        $base = rtrim($base, '-');
+        $slug = $base;
+        $suffix = 2;
+        while ($exists($slug)) {
+            $slug = $base.'-'.$suffix++;
+        }
+
+        return $slug;
     }
 
     private function fail(string $message): void

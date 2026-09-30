@@ -55,7 +55,7 @@ export function initPublishing() {
     if (!form) return;
     const standard = form.querySelector('[data-standard-content]');
     const manuscript = form.querySelector('[data-import-content]');
-    const seo = form.querySelector('[data-standard-seo]');
+    const importMetadata = form.querySelector('[data-import-metadata]');
     const publicationDate = form.querySelector('[data-field="published_at"]');
     const preview = form.querySelector('[data-chapter-preview]');
     const message = form.querySelector('[data-import-message]');
@@ -76,7 +76,7 @@ export function initPublishing() {
     };
     const toggle = () => {
         const importing = importMode();
-        [[standard, importing], [manuscript, !importing], [form.querySelector('[data-import-image]'), !importing], [seo, importing], [publicationDate, importing]].forEach(([section, hidden]) => {
+        [[standard, importing], [manuscript, !importing], [form.querySelector('[data-import-image]'), !importing], [importMetadata, !importing], [publicationDate, importing]].forEach(([section, hidden]) => {
             if (!section) return;
             section.hidden = hidden;
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });
@@ -99,6 +99,8 @@ export function initPublishing() {
         const source = form.querySelector('[name="manuscript"]');
         data.set('content', source.editor ? source.editor.getData() : source.value);
         data.delete('manuscript');
+        data.set('description', data.get('excerpt') || '');
+        data.delete('excerpt');
         busy = true; analyze.disabled = true; analyze.textContent = 'Analyzing...';
         message.textContent = 'Building chapter previews...';
         try {

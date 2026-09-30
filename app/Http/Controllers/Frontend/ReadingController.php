@@ -124,9 +124,12 @@ class ReadingController extends Controller
         $chapter = $this->posts()->with('content')->where('series_id', $series->id)->where('slug', $chapterSlug)->where('type', 'chapter')->firstOrFail();
         $previous = $this->posts()->where('series_id', $series->id)->where('chapter_number', '<', $chapter->chapter_number)->orderByDesc('chapter_number')->first();
         $next = $this->posts()->where('series_id', $series->id)->where('chapter_number', '>', $chapter->chapter_number)->orderBy('chapter_number')->first();
+        $chapterLinks = Post::select(['id', 'title', 'slug', 'chapter_number'])
+            ->published()->where('series_id', $series->id)->where('type', 'chapter')
+            ->orderBy('chapter_number')->get();
         $schema = ['@context' => 'https://schema.org', '@type' => 'Chapter', 'name' => $chapter->title, 'position' => $chapter->chapter_number, 'isPartOf' => ['@type' => 'Book', 'name' => $series->title, 'url' => url('/stories/'.$series->slug)], 'url' => post_url($chapter), 'inLanguage' => 'en'];
 
-        return $this->pageView('chapter', compact('series', 'chapter', 'previous', 'next', 'schema'), $chapter);
+        return $this->pageView('chapter', compact('series', 'chapter', 'previous', 'next', 'chapterLinks', 'schema'), $chapter);
     }
 
     public function post(string $slug)

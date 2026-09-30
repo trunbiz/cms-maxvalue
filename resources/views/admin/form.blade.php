@@ -41,16 +41,24 @@
     @endif
     <div class="publishing-grid @if(!$groups['Publishing'] && !$groups['Organization'] && !$groups['Featured image']) publishing-grid-wide @endif">
         <div class="publishing-main">
+            @if($isPost && !$record->exists)
+                <section class="editor-section mb-4">
+                    <h2 class="section-title">Title &amp; description</h2>
+                    @include('admin.fields.input',['field'=>'title','label'=>'Title'])
+                    @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
+                    <p class="form-text mb-0">For chapter imports, these fields describe the Series. Leave them blank to use the manuscript introduction.</p>
+                </section>
+            @endif
             <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
                 <h2 class="section-title">Content</h2>
-                @foreach($groups['Content'] as $field=>$label) @include('admin.fields.input') @endforeach
+                @foreach($groups['Content'] as $field=>$label) @if(!($isPost && !$record->exists && in_array($field,['title','excerpt']))) @include('admin.fields.input') @endif @endforeach
             </section>
             @if($isPost && !$record->exists)
                 <section class="editor-section" data-import-content @if(!$importMode) hidden @endif>
                     <h2 class="section-title">Manuscript</h2>
-                    @include('admin.fields.input',['field'=>'series_id','label'=>'Story'])
+                    @include('admin.fields.input',['field'=>'series_id','label'=>'Series'])
                     <label class="form-label" for="manuscript">Intro/Description</label>
-                    <p class="import-guidance" id="manuscript-help">Paste the full content into Intro/Description, put the story name before CHAPTER 1, and mark each chapter with CHAPTER X - Title. With no series selected, the first line names the series and the remaining lines become its description.</p>
+                    <p class="import-guidance" id="manuscript-help">Mark each chapter with CHAPTER X - Title. Enter a Series title and description above, or put the title on the first line before CHAPTER 1 and its description on the following lines.</p>
                     <textarea class="form-control" id="manuscript" name="manuscript" rows="18" data-editor aria-describedby="manuscript-help">{{ old('manuscript') }}</textarea>
                     <p class="form-text">Images and rich formatting are preserved in the chapter previews.</p>
                     <details class="import-options mt-4"><summary>Import options</summary><div class="pt-3">
@@ -63,7 +71,7 @@
                 <section class="editor-section mt-4" data-chapter-preview aria-label="Chapter previews" hidden></section>
             @endif
             @if($groups['Search & link'])
-                <details class="editor-section mt-4" data-standard-seo><summary class="section-title mb-0">Search &amp; link <span class="small fw-normal text-secondary">Optional settings</span></summary><div class="pt-4">@foreach($groups['Search & link'] as $field=>$label) @include('admin.fields.input') @endforeach</div></details>
+                <details class="editor-section mt-4" data-search-link><summary class="section-title mb-0">Search &amp; link <span class="small fw-normal text-secondary">Optional settings</span></summary><div class="pt-4">@foreach($groups['Search & link'] as $field=>$label) @include('admin.fields.input') @endforeach @if($isPost && !$record->exists)<div data-import-metadata @if(!$importMode) hidden @endif>@include('admin.fields.input',['field'=>'seo_keywords','label'=>'SEO keywords'])<p class="form-text mb-0">Search and link settings apply to the Series. Chapter links are generated automatically.</p></div>@endif</div></details>
             @endif
         </div>
         <aside class="publishing-aside">

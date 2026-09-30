@@ -24,7 +24,7 @@ class ChapterImportController extends Controller
     public function preview(ChapterImportRequest $request, ChapterImportService $service, MediaService $media)
     {
         $options = $request->validated();
-        $preview = $service->preview($options['content'], isset($options['series_id']) ? (int) $options['series_id'] : null);
+        $preview = $service->preview($options['content'], isset($options['series_id']) ? (int) $options['series_id'] : null, $options);
         unset($options['content']);
         if ($request->hasFile('image')) {
             $options['image'] = $media->upload($request->file('image'), 'imports');
