@@ -15,9 +15,9 @@ use App\Services\SocialPreviewService;
 
 class ReadingController extends Controller
 {
-    private const POST_COLUMNS = ['id', 'title', 'slug', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'views', 'published_at', 'seo_title', 'seo_description', 'updated_at', 'status'];
+    private const POST_COLUMNS = ['id', 'title', 'slug', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'published_at', 'seo_title', 'seo_description', 'updated_at', 'status'];
 
-    private const SERIES_COLUMNS = ['id', 'title', 'slug', 'description', 'image', 'category_id', 'status', 'views', 'seo_title', 'seo_keywords', 'seo_description', 'updated_at'];
+    private const SERIES_COLUMNS = ['id', 'title', 'slug', 'description', 'image', 'category_id', 'status', 'seo_title', 'seo_keywords', 'seo_description', 'updated_at'];
 
     private function posts()
     {

@@ -7,7 +7,7 @@
 <nav class="small mb-4" aria-label="Breadcrumb">
     <a href="/">Home</a> / @if($isArticle)<a href="/articles">Articles</a> / @endif <span>{{ $article->title }}</span>
 </nav>
-<article @if($isArticle && !($isPreview??false)) data-view-type="post" data-view-id="{{ $article->id }}" @endif>
+<article>
     <header class="article-header text-center mb-5">
         <span class="eyebrow">{{ $isArticle?($article->category?->name??'READ & REFLECT'):'ABOUT THIS PUBLICATION' }}</span>
         <h1 class="mt-3">{{ $article->title }}</h1>

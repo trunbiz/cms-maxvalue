@@ -61,8 +61,6 @@ document.querySelectorAll('[data-continue-series]').forEach(link => {
         link.href = item.url; link.classList.remove('d-none');
     }
 });
-const viewed = document.querySelector('[data-view-type]');
-if (viewed) fetch('/api/views', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ type: viewed.dataset.viewType, id: Number(viewed.dataset.viewId) }), credentials: 'omit', keepalive: true }).catch(() => {});
 
 const chapterSticky = document.querySelector('[data-chapter-sticky]');
 if (chapterSticky) {

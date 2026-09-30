@@ -27,7 +27,7 @@
 
 ## Quy tắc hiệu năng
 - HTML trang frontend giống nhau cho mọi người đọc, không có @auth trong Blade frontend
-- Lượt xem: Redis INCR, scheduler ghi dồn vào DB mỗi 10 phút
+- Read counts are disabled: no browser tracking requests, Redis counters, or scheduled database writes.
 - Không SELECT *, luôn eager loading, không N+1
 - Nội dung bài viết nằm ở bảng riêng post_contents
 - Settings, menu, danh mục cache bằng Cache::rememberForever, xóa cache khi admin cập nhật

@@ -41,7 +41,6 @@ HTML],
 <p>This notice explains how [[publisher_name]], the publisher of [[site_name]] at [[site_url]], handles information in connection with this website. For privacy questions, contact <a href="mailto:[[contact_email]]">[[contact_email]]</a>.</p>
 <h2>Information used to operate the website</h2>
 <p>When you request a page, the web server and infrastructure providers receive technical information such as your IP address, browser information, requested URL, and request time. This information may be used to deliver pages, diagnose errors, maintain security, and prevent abuse. Hosting and network logs may be retained according to the service configuration and operational needs.</p>
-<p>The website counts article and story views. It briefly uses a hash derived from the visitor IP address and browser user agent to reduce repeated counting. This short-lived value is not a reader account. View totals are stored as aggregate counts.</p>
 <h2>Information you choose to send</h2>
 <p>If you email us, your message, email address, and any information you include will be handled to respond to the request and keep any necessary correspondence. Please avoid sending sensitive information that is not needed. Reader registration, comments, and newsletter signup are not provided on this website.</p>
 <h2>Cookies and storage on your device</h2>
