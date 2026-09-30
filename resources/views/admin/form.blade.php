@@ -19,7 +19,7 @@
         'Organization'=>array_intersect_key($definition['fields'],array_flip(['category_id','tags'])),
         'Featured image'=>array_intersect_key($definition['fields'],array_flip(['image'])),
         'Publishing'=>array_intersect_key($definition['fields'],array_flip(['status','published_at'])),
-        'Search & link'=>array_intersect_key($definition['fields'],array_flip(['slug','seo_title','seo_keywords','seo_description'])),
+        'Search & link'=>array_intersect_key($definition['fields'],array_flip(['seo_title','seo_keywords','seo_description'])),
     ];
 @endphp
 <form method="post" enctype="multipart/form-data" action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form" @if($isPost && !$record->exists) data-composer @endif>
@@ -52,13 +52,21 @@
                     </div>
                     <hr class="my-4">
                     @include('admin.fields.input',['field'=>'title','label'=>'Title'])
+                    @include('admin.fields.input',['field'=>'slug','label'=>$definition['fields']['slug']])
                     @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
                     <p class="form-text mb-0">For chapter imports, these fields describe the Series. Leave them blank to use the manuscript introduction.</p>
                 </section>
             @endif
             <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
                 <h2 class="section-title">Content</h2>
-                @foreach($groups['Content'] as $field=>$label) @if(!($isPost && !$record->exists && in_array($field,['title','excerpt']))) @include('admin.fields.input') @endif @endforeach
+                @foreach($groups['Content'] as $field=>$label)
+                    @if(!($isPost && !$record->exists && in_array($field,['title','excerpt'])))
+                        @include('admin.fields.input')
+                        @if(in_array($field,['title','name']) && isset($definition['fields']['slug']))
+                            @include('admin.fields.input',['field'=>'slug','label'=>$definition['fields']['slug']])
+                        @endif
+                    @endif
+                @endforeach
             </section>
             @if($isPost && !$record->exists)
                 <section class="editor-section" data-import-content @if(!$importMode) hidden @endif>
@@ -78,7 +86,7 @@
                 <section class="editor-section mt-4" data-chapter-preview aria-label="Chapter previews" hidden></section>
             @endif
             @if($groups['Search & link'])
-                <details class="editor-section mt-4" data-search-link><summary class="section-title mb-0">Search &amp; link <span class="small fw-normal text-secondary">Optional settings</span></summary><div class="pt-4">@foreach($groups['Search & link'] as $field=>$label) @include('admin.fields.input') @endforeach @if($isPost && !$record->exists)<div data-import-metadata @if(!$importMode) hidden @endif>@include('admin.fields.input',['field'=>'seo_keywords','label'=>'SEO keywords'])<p class="form-text mb-0">Search and link settings apply to the Series. Chapter links are generated automatically.</p></div>@endif</div></details>
+                <details class="editor-section mt-4" data-search-link open><summary class="section-title mb-0">Search &amp; link <span class="small fw-normal text-secondary">Optional settings</span></summary><div class="pt-4">@foreach($groups['Search & link'] as $field=>$label) @include('admin.fields.input') @endforeach @if($isPost && !$record->exists)<div data-import-metadata @if(!$importMode) hidden @endif>@include('admin.fields.input',['field'=>'seo_keywords','label'=>'SEO keywords'])<p class="form-text mb-0">Search and link settings apply to the Series. Chapter links are generated automatically.</p></div>@endif</div></details>
             @endif
         </div>
         <aside class="publishing-aside">

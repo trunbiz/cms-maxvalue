@@ -1,4 +1,18 @@
 export function initPublishing() {
+    document.querySelectorAll('.publishing-form').forEach(form => {
+        const title = form.querySelector('[name="title"], [name="name"]');
+        const description = form.querySelector('[name="excerpt"], [name="description"]');
+        const seoTitle = form.querySelector('[name="seo_title"]');
+        const seoDescription = form.querySelector('[name="seo_description"]');
+        const refresh = () => {
+            if (seoTitle) seoTitle.placeholder = title?.value.trim() || 'Uses the title when left blank';
+            if (seoDescription) seoDescription.placeholder = description?.value.trim() || 'Uses the description when left blank';
+        };
+        title?.addEventListener('input', refresh);
+        description?.addEventListener('input', refresh);
+        refresh();
+    });
+
     document.querySelectorAll('[data-choice-picker]').forEach(picker => {
         const search = picker.querySelector('[data-choice-search]');
         const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

@@ -11,6 +11,7 @@ use App\Models\Series;
 use App\Models\Tag;
 use App\Services\PublisherService;
 use App\Services\SiteService;
+use App\Services\SocialPreviewService;
 
 class ReadingController extends Controller
 {
@@ -33,7 +34,10 @@ class ReadingController extends Controller
         $site = app(SiteService::class);
         $settings = $site->settings();
         $title = $entity?->seo_title ?: ($entity?->title ?? $entity?->name ?? $data['heading'] ?? $settings['site_name'] ?? 'Reading Corner');
-        $description = $entity?->seo_description ?: ($entity?->excerpt ?? $entity?->description ?? $settings['seo_description'] ?? '');
+        $social = app(SocialPreviewService::class)->metadata($entity, $settings,
+            isset($data['chapter']) ? ($data['series'] ?? null) : null,
+            $data['content'] ?? ($data['chapter']->content?->content ?? ''));
+        $description = $social['description'];
         $canonical = url(request()->path());
         $pagination = array_filter(['page' => request()->integer('page') > 1 ? request()->integer('page') : null, 'series_page' => request()->integer('series_page') > 1 ? request()->integer('series_page') : null]);
         if ($pagination) {
@@ -51,7 +55,7 @@ class ReadingController extends Controller
             $noindex = true;
         }
 
-        return view('frontend.'.$view, $data + ['settings' => $settings, 'menus' => $site->menus(), 'categories' => $site->categories(), 'seo' => ['title' => $title, 'description' => mb_substr(strip_tags($description), 0, 200), 'canonical' => $canonical, 'image' => media_url($entity?->image), 'keywords' => $entity?->seo_keywords, 'robots' => $noindex ? 'noindex,follow' : 'index,follow']]);
+        return view('frontend.'.$view, $data + ['settings' => $settings, 'menus' => $site->menus(), 'categories' => $site->categories(), 'seo' => ['title' => $title, 'description' => mb_substr(strip_tags($description), 0, 200), 'canonical' => $canonical, 'image' => $social['image'], 'image_alt' => $social['image_alt'], 'image_type' => $social['image_type'], 'default_image' => $social['default_image'], 'keywords' => $entity?->seo_keywords, 'robots' => $noindex ? 'noindex,follow' : 'index,follow']]);
     }
 
     public function home()
@@ -120,7 +124,7 @@ class ReadingController extends Controller
 
     public function chapter(string $slug, string $chapterSlug)
     {
-        $series = Series::select(['id', 'title', 'slug'])->published()->where('slug', $slug)->firstOrFail();
+        $series = Series::select(['id', 'title', 'slug', 'image', 'description', 'seo_description'])->published()->where('slug', $slug)->firstOrFail();
         $chapter = $this->posts()->with('content')->where('series_id', $series->id)->where('slug', $chapterSlug)->where('type', 'chapter')->firstOrFail();
         $previous = $this->posts()->where('series_id', $series->id)->where('chapter_number', '<', $chapter->chapter_number)->orderByDesc('chapter_number')->first();
         $next = $this->posts()->where('series_id', $series->id)->where('chapter_number', '>', $chapter->chapter_number)->orderBy('chapter_number')->first();

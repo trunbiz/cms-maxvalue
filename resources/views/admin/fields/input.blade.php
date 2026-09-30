@@ -24,5 +24,7 @@
         @if($field==='password' && $record->exists)<small class="text-secondary">Leave blank to keep the current password.</small>@endif
         @if($field==='slug')<p class="form-text mb-0">Leave blank to generate from the title.</p>@endif
     @endif
+    @if($field==='seo_title')<p class="form-text mb-0">Leave blank to use the title automatically.</p>@endif
+    @if($field==='seo_description')<p class="form-text mb-0">Leave blank to use the description automatically.</p>@endif
     @error($field)<p class="small text-danger mt-2 mb-0">{{ $message }}</p>@enderror
 </div>
