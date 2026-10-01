@@ -58,6 +58,24 @@ class PublishingEditorTest extends TestCase
             ->assertSee('href="'.post_url($post).'"', false);
     }
 
+    public function test_create_form_collapses_optional_fields_and_reveals_validation_errors(): void
+    {
+        $this->actingAs($this->admin());
+        $this->get('/admin/posts/create?mode=normal')->assertOk()
+            ->assertSee('data-composer data-auto-slug', false)
+            ->assertSee('data-description-options >', false)
+            ->assertSee('data-title-slug', false)
+            ->assertDontSee('data-slug-options', false)
+            ->assertSee('Generated as you type the title. You can edit it directly.')
+            ->assertSee('data-search-link >', false);
+        $this->withSession(['errors' => (new \Illuminate\Support\ViewErrorBag)->put('default', new \Illuminate\Support\MessageBag([
+            'excerpt' => 'Invalid description', 'slug' => 'Invalid slug', 'seo_title' => 'Invalid SEO title',
+        ]))])->get('/admin/posts/create?mode=normal')->assertOk()
+            ->assertSee('data-description-options  open ', false)
+            ->assertSee('Invalid slug')
+            ->assertSee('data-search-link  open ', false);
+    }
+
     public function test_multiple_categories_are_saved_searchable_and_can_be_cleared(): void
     {
         $this->actingAs($this->admin());

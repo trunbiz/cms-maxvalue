@@ -4,6 +4,22 @@ export function initPublishing() {
         const description = form.querySelector('[name="excerpt"], [name="description"]');
         const seoTitle = form.querySelector('[name="seo_title"]');
         const seoDescription = form.querySelector('[name="seo_description"]');
+        const slug = form.querySelector('[name="slug"]');
+        if (form.hasAttribute('data-auto-slug') && title && slug) {
+            const slugify = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            let automatic = !slug.value || slug.value === slugify(title.value);
+            const updateSlug = () => {
+                if (automatic) slug.value = slugify(title.value);
+            };
+            title.addEventListener('input', updateSlug);
+            slug.addEventListener('input', () => { automatic = !slug.value.trim(); updateSlug(); });
+            updateSlug();
+        }
+        form.addEventListener('invalid', event => {
+            let section = event.target.closest('details');
+            while (section) { section.open = true; section = section.parentElement.closest('details'); }
+        }, true);
         const refresh = () => {
             if (seoTitle) seoTitle.placeholder = title?.value.trim() || 'Uses the title when left blank';
             if (seoDescription) seoDescription.placeholder = description?.value.trim() || 'Uses the description when left blank';

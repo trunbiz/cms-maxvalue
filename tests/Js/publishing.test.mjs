@@ -17,6 +17,37 @@ const change = element => element.dispatchEvent(new Event('change', { bubbles: t
 const input = element => element.dispatchEvent(new Event('input', { bubbles: true }));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+test('new post slugs follow Vietnamese titles and respect manual overrides', () => {
+    const dom = setup('<form class="publishing-form" data-auto-slug><input name="title"><details><summary>Slug</summary><input name="slug"></details></form>');
+    try {
+        initPublishing();
+        const title = document.querySelector('[name="title"]');
+        const slug = document.querySelector('[name="slug"]');
+        title.value = 'Đọc truyện: Những ngày đẹp!'; input(title);
+        assert.equal(slug.value, 'doc-truyen-nhung-ngay-dep');
+        slug.value = 'custom-link'; input(slug);
+        title.value = 'Tiêu đề mới'; input(title);
+        assert.equal(slug.value, 'custom-link');
+        slug.value = ''; input(slug);
+        assert.equal(slug.value, 'tieu-de-moi');
+        title.value = ''; input(title); assert.equal(slug.value, '');
+        slug.dispatchEvent(new Event('invalid'));
+        assert.equal(document.querySelector('details').open, true);
+    } finally { dom.window.close(); }
+});
+
+test('existing and restored custom slugs survive initialization and title changes', () => {
+    for (const attribute of ['', 'data-auto-slug']) {
+        const dom = setup(`<form class="publishing-form" ${attribute}><input name="title" value="Original"><input name="slug" value="saved-link"></form>`);
+        try {
+            initPublishing();
+            const title = document.querySelector('[name="title"]');
+            title.value = 'Updated'; input(title);
+            assert.equal(document.querySelector('[name="slug"]').value, 'saved-link');
+        } finally { dom.window.close(); }
+    }
+});
+
 test('search, image previews and chapter analysis preserve selections and invalidate stale previews', async () => {
     const dom = setup(`<form data-composer>
         <input type="radio" name="compose_mode" value="normal" checked><input type="radio" name="compose_mode" value="import">
