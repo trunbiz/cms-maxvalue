@@ -49,7 +49,7 @@
             <small class="text-secondary">Leave blank to keep the current password.</small>
         @endif
         @if($field==='slug')
-            <p class="form-text mb-0">Leave blank to generate from the title.</p>
+            <p class="form-text mb-0">{{ $resource==='posts' && !$record->exists ? 'Generated as you type the title. You can edit it directly.' : 'Leave blank to generate from the title.' }}</p>
         @endif
     @endif
     @if($field==='seo_title')

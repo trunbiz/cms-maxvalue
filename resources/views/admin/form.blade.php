@@ -32,7 +32,7 @@
     @endphp
     <form method="post" enctype="multipart/form-data"
           action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form"
-          @if($isPost && !$record->exists) data-composer @endif>
+          @if($isPost && !$record->exists) data-composer data-auto-slug @endif>
         @csrf @if($record->exists)
             @method('PUT')
         @endif
@@ -75,13 +75,19 @@
                                 cover. The image appears on each chapter page.</p>
                         </div>
                         <hr class="my-4">
-                        <div class="row gx-4">
+                        <div class="row gx-4" data-title-slug>
                             <div class="col-md-6">@include('admin.fields.input',['field'=>'title','label'=>'Title'])</div>
-                            <div class="col-md-6">@include('admin.fields.input',['field'=>'slug','label'=>$definition['fields']['slug']])</div>
+                            <div class="col-md-6">
+                                @include('admin.fields.input',['field'=>'slug','label'=>$definition['fields']['slug']])
+                            </div>
                         </div>
-                        @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
-                        <p class="form-text mb-0">For chapter imports, these fields describe the Series. Leave them
-                            blank to use the manuscript introduction.</p>
+                        <details class="publishing-options" data-description-options @if($errors->has('excerpt') || filled(old('excerpt'))) open @endif>
+                            <summary>Description <span class="small fw-normal text-secondary">Optional</span></summary>
+                            <div class="pt-3">
+                                @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
+                                <p class="form-text mb-0">For chapter imports, this describes the Series. Leave it blank to use the manuscript introduction.</p>
+                            </div>
+                        </details>
                     </section>
                 @endif
                 <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
@@ -131,7 +137,7 @@
                              hidden></section>
                 @endif
                 @if($groups['Search & link'])
-                    <details class="editor-section mt-4" data-search-link open>
+                    <details class="editor-section mt-4" data-search-link @if($errors->hasAny(['seo_title','seo_keywords','seo_description'])) open @endif>
                         <summary class="section-title mb-0">Search &amp; link <span
                                 class="small fw-normal text-secondary">Optional settings</span></summary>
                         <div class="pt-4">
