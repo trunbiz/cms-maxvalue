@@ -28,6 +28,7 @@ class PublishingEditorTest extends TestCase
         $this->get('/admin/posts/create?mode=import')->assertOk()
             ->assertSee('Standard article')->assertSee('Split text into chapters')
             ->assertSee('Analyze chapters')->assertSee('Intro/Description')
+            ->assertSee('Paste a manuscript and save. Preview is optional.')
             ->assertSee('data-choice-search', false)->assertSee('data-image-preview', false)
             ->assertSee('Organization')->assertSee('Search &amp; link', false)
             ->assertDontSee('name="chapter_number"', false)->assertDontSee('Single chapter')

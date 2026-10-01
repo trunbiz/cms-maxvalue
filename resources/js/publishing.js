@@ -82,9 +82,9 @@ export function initPublishing() {
     const pendingUpload = () => !!form.querySelector('[data-upload-pending="true"]');
     const invalidate = () => {
         revision++; token = ''; preview.hidden = true;
-        save.disabled = importMode();
+        save.disabled = busy;
         if (importMode()) {
-            message.textContent = 'Analyze the manuscript to preview chapters before saving.';
+            message.textContent = 'Save chapters directly, or use Analyze chapters for an optional preview.';
             message.className = 'small text-secondary mt-3';
         }
     };
@@ -96,7 +96,7 @@ export function initPublishing() {
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });
         });
         save.textContent = importing ? 'Save chapters' : 'Save changes';
-        hint.textContent = importing ? 'Analyze, review the chapters, then save. Choose Published to publish them.' : 'New content is public by default. Choose Draft to keep it private.';
+        hint.textContent = importing ? 'Save chapters directly or preview with Analyze chapters. Choose Published to publish them.' : 'New content is public by default. Choose Draft to keep it private.';
         invalidate();
     };
     form.querySelectorAll('[name="compose_mode"]').forEach(input => input.addEventListener('change', toggle));
@@ -104,7 +104,7 @@ export function initPublishing() {
         if (e.target.matches('[data-choice-search],[data-new-tag]')) return;
         invalidate();
     }));
-    analyze.addEventListener('click', async () => {
+    const analyzeChapters = async (showPreview = true) => {
         if (busy) return;
         if (pendingUpload()) { message.textContent = 'Wait for the image upload to finish, then analyze again.'; return; }
         invalidate();
@@ -115,27 +115,30 @@ export function initPublishing() {
         data.delete('manuscript');
         data.set('description', data.get('excerpt') || '');
         data.delete('excerpt');
-        busy = true; analyze.disabled = true; analyze.textContent = 'Analyzing...';
-        message.textContent = 'Building chapter previews...';
+        busy = true; save.disabled = true; analyze.disabled = true; analyze.textContent = 'Analyzing...';
+        message.textContent = showPreview ? 'Building chapter previews...' : 'Preparing chapters to save...';
         try {
             const response = await fetch('/admin/import/preview', { method: 'POST', body: data, headers: { Accept: 'application/json' } });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Unable to analyze. Check your connection or sign in again.');
-            if (revision !== currentRevision) { message.textContent = 'The manuscript or settings changed. Analyze again to refresh the preview.'; return; }
+            if (revision !== currentRevision || !importMode()) { message.textContent = 'The manuscript or settings changed. Save or analyze again to use the latest content.'; return; }
             token = result.token;
             preview.innerHTML = result.html; // Server-rendered Blade fragment; chapter HTML is sanitized on the server.
-            preview.hidden = false; save.disabled = false;
-            message.className = 'small text-success mt-3'; message.textContent = 'Chapters are ready below. Review them, then save.';
-            preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            preview.hidden = !showPreview;
+            message.className = 'small text-success mt-3'; message.textContent = showPreview ? 'Chapters are ready below. Review them, then save.' : 'Chapters are ready to save.';
+            if (showPreview) preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
             message.className = 'alert alert-danger mt-3'; message.textContent = error.message;
-        } finally { busy = false; analyze.disabled = false; analyze.textContent = 'Analyze chapters'; }
-    });
-    form.addEventListener('submit', event => {
+        } finally { busy = false; save.disabled = false; analyze.disabled = false; analyze.textContent = 'Analyze chapters'; }
+    };
+    analyze.addEventListener('click', () => analyzeChapters());
+    form.addEventListener('submit', async event => {
         if (pendingUpload()) { event.preventDefault(); return; }
         if (!importMode()) return;
         event.preventDefault();
-        if (!token || busy) { message.textContent = 'Analyze and review the chapters before saving.'; return; }
+        if (busy) return;
+        if (!token) await analyzeChapters(false);
+        if (!token || !importMode() || pendingUpload()) return;
         confirmation.elements.token.value = token; save.disabled = true; save.textContent = 'Saving...'; confirmation.requestSubmit();
     });
     toggle();

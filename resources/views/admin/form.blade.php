@@ -54,7 +54,7 @@
                         <label class="content-mode"><input class="form-check-input" type="radio" name="compose_mode"
                                                            value="normal" @checked(!$importMode)><span><strong>Standard article</strong><small>Write and publish one article.</small></span></label>
                         <label class="content-mode"><input class="form-check-input" type="radio" name="compose_mode"
-                                                           value="import" @checked($importMode)><span><strong>Split text into chapters</strong><small>Paste a manuscript, analyze, then save.</small></span></label>
+                                                           value="import" @checked($importMode)><span><strong>Split text into chapters</strong><small>Paste a manuscript and save. Preview is optional.</small></span></label>
                     </div>
                 </section>
             @endif

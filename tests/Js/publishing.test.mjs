@@ -54,7 +54,7 @@ test('search, image previews and chapter analysis preserve selections and invali
         assert.equal(document.querySelector('[data-image-thumbnail]').getAttribute('src'), '/existing.webp');
         const mode = document.querySelector('[value="import"]'); mode.checked = true; change(mode);
         const save = document.querySelector('[data-save]');
-        assert.equal(document.querySelector('[data-standard-content]').hidden, true); assert.equal(save.disabled, true);
+        assert.equal(document.querySelector('[data-standard-content]').hidden, true); assert.equal(save.disabled, false);
         let resolve;
         globalThis.fetch = () => new Promise(callback => { resolve = callback; });
         document.querySelector('[data-analyze]').click();
@@ -64,13 +64,40 @@ test('search, image previews and chapter analysis preserve selections and invali
         const confirm = document.querySelector('[data-import-confirm]'); confirm.requestSubmit = () => { submitted = true; };
         document.querySelector('[data-composer]').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
         assert.equal(submitted, true); assert.equal(confirm.elements.token.value, 'reviewed-token');
-        change(document.querySelector('[name="status"]')); assert.equal(save.disabled, true);
+        change(document.querySelector('[name="status"]')); assert.equal(save.disabled, false);
         document.querySelector('[data-analyze]').click(); input(document.querySelector('[name="manuscript"]'));
         resolve({ ok: true, json: async () => ({ token: 'stale', html: '<p>Old preview</p>' }) }); await tick();
-        assert.equal(save.disabled, true); assert.equal(document.querySelector('[data-chapter-preview]').hidden, true);
+        assert.equal(save.disabled, false); assert.equal(document.querySelector('[data-chapter-preview]').hidden, true);
         document.querySelector('[data-analyze]').click(); resolve({ ok: false, json: async () => ({ errors: { content: ['No chapter headings found.'] } }) }); await tick();
         assert.match(document.querySelector('[data-import-message]').textContent, /No chapter headings/);
-        assert.equal(save.disabled, true); assert.equal(document.querySelector('[data-analyze]').disabled, false);
+        assert.equal(save.disabled, false); assert.equal(document.querySelector('[data-analyze]').disabled, false);
+        submitted = false;
+        const composer = document.querySelector('[data-composer]');
+        const submit = () => composer.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        const source = document.querySelector('[name="manuscript"]');
+        source.editor = { getData: () => '<h2>CHAPTER 1 - Latest</h2><p>Updated body</p>' };
+        let requests = 0;
+        globalThis.fetch = (url, options) => {
+            requests++;
+            assert.equal(url, '/admin/import/preview');
+            assert.equal(options.body.get('content'), source.editor.getData());
+            return new Promise(callback => { resolve = callback; });
+        };
+        submit(); submit();
+        assert.equal(requests, 1, 'Repeated saves must not start duplicate analysis');
+        assert.equal(save.disabled, true);
+        resolve({ ok: false, json: async () => ({ errors: { content: ['No chapter headings found.'] } }) }); await tick();
+        assert.equal(submitted, false); assert.equal(save.disabled, false);
+        submit(); input(source);
+        resolve({ ok: true, json: async () => ({ token: 'outdated-token', html: '<p>Outdated</p>' }) }); await tick();
+        assert.equal(submitted, false, 'Changes during automatic analysis must prevent saving stale content');
+        assert.equal(save.disabled, false);
+        submit();
+        resolve({ ok: true, json: async () => ({ token: 'automatic-token', html: '<p>Latest chapter</p>' }) }); await tick();
+        assert.equal(submitted, true, 'Save must automatically analyze and submit without a preview click');
+        assert.equal(confirm.elements.token.value, 'automatic-token');
+        assert.equal(document.querySelector('[data-chapter-preview]').hidden, true);
+
     } finally { globalThis.fetch = originalFetch; URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; dom.window.close(); }
 });
 
