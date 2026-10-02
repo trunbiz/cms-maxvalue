@@ -27,6 +27,7 @@
                 <td><div class="d-flex gap-2 justify-content-end">
                     @if($resource==='series')<a class="btn btn-sm btn-outline-primary icon-button" title="{{ __('Chapters') }}" aria-label="{{ __('Chapters') }}" href="/admin/posts?series_id={{ $record->id }}">@include('admin.icon',['name'=>'chapters'])</a>@endif
                     @if($resource==='posts')@include('admin.copy-link',['url'=>post_url($record)])@endif
+                    @if($resource==='pages')@include('admin.copy-link',['url'=>url('/pages/'.$record->slug)])@endif
                     <a class="btn btn-sm btn-light btn-outline-secondary icon-button" title="{{ __('Edit') }}" aria-label="{{ __('Edit') }}" href="/admin/{{ $resource }}/{{ $record->id }}/edit">@include('admin.icon',['name'=>'edit'])</a>
                     <form method="post" action="/admin/{{ $resource }}/{{ $record->id }}" data-confirm>@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger icon-button" title="{{ __('Delete') }}" aria-label="{{ __('Delete') }}">@include('admin.icon',['name'=>'delete'])</button></form>
                 </div></td>
