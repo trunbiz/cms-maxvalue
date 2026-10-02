@@ -55,7 +55,7 @@ class PublishingEditorTest extends TestCase
             ->assertSee('title="Edit" aria-label="Edit"', false)
             ->assertSee('title="Delete" aria-label="Delete"', false)
             ->assertSee('title="Copy link" aria-label="Copy link"', false)
-            ->assertSee('href="'.post_url($post).'"', false);
+            ->assertSee('data-copy-link="'.post_url($post).'"', false);
     }
 
     public function test_create_form_collapses_optional_fields_and_reveals_validation_errors(): void
@@ -136,7 +136,9 @@ class PublishingEditorTest extends TestCase
         $this->assertDatabaseHas('series', ['title' => $data['title'], 'description' => $data['description'],
             'slug' => $data['slug'], 'seo_title' => $data['seo_title'],
             'seo_keywords' => $data['seo_keywords'], 'seo_description' => $data['seo_description']]);
-        $this->postJson('/admin/import/preview', $data)->assertUnprocessable()->assertJsonValidationErrors('slug');
+        $duplicate = $this->postJson('/admin/import/preview', $data)->assertOk();
+        $this->post('/admin/import', ['token' => $duplicate->json('token')])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('series', ['slug' => 'custom-series-link-2']);
         $this->postJson('/admin/import/preview', array_replace($data, ['slug' => 'Invalid Slug']))
             ->assertUnprocessable()->assertJsonValidationErrors('slug');
     }

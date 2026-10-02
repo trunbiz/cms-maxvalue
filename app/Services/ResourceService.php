@@ -50,6 +50,8 @@ class ResourceService
         if ($resource === 'posts') {
             $author = $record->created_by ? User::findOrFail($record->created_by) : $actor;
             $data['slug'] = app(PostSlugService::class)->make($data['slug'] ?: $data['title'], $author, $record->id);
+        } elseif (isset($data['slug'])) {
+            $data['slug'] = app(SlugService::class)->unique(get_class($record), $data['slug'], $record->id);
         }
         $uploadedPath = $data['image_path'] ?? null;
         unset($data['image_path']);

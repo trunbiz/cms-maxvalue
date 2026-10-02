@@ -91,4 +91,20 @@ class AdminUpdatesTest extends TestCase
         $this->get('/admin/series?'.http_build_query(['status' => 'published', 'category_id' => $category->id, 'created_by' => $admin->id]))->assertOk()->assertSee($series->title);
         $this->get('/admin/series?status=draft')->assertOk()->assertDontSee($series->title);
     }
+
+    public function test_duplicate_resource_slugs_get_numbered_suffixes_and_keep_their_slug_on_update(): void
+    {
+        $admin = User::factory()->create(['role_id' => Role::factory()->create(['name' => 'Super Admin'])->id]);
+        $this->actingAs($admin);
+        foreach (['pages' => \App\Models\Page::class, 'series' => \App\Models\Series::class, 'categories' => \App\Models\Category::class, 'tags' => \App\Models\Tag::class] as $resource => $model) {
+            $data = ['title' => 'Same title', 'name' => 'Same name', 'slug' => 'same-link', 'content' => '<p>Page body</p>', 'status' => 'draft'];
+            foreach (['same-link', 'same-link-2', 'same-link-3'] as $slug) {
+                $this->post('/admin/'.$resource, $data)->assertRedirect()->assertSessionHasNoErrors();
+                $this->assertDatabaseHas($resource, ['slug' => $slug]);
+            }
+            $record = $model::where('slug', 'same-link-2')->firstOrFail();
+            $this->put('/admin/'.$resource.'/'.$record->id, array_replace($data, ['slug' => $record->slug]))->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertDatabaseHas($resource, ['id' => $record->id, 'slug' => 'same-link-2']);
+        }
+    }
 }

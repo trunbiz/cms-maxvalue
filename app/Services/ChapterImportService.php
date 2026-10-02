@@ -240,24 +240,9 @@ class ChapterImportService
 
     private function seriesSlug(string $title, ?string $customSlug, ?int $seriesId = null): string
     {
-        $exists = fn (string $slug) => Series::where('slug', $slug)
-            ->when($seriesId, fn ($query) => $query->where('id', '!=', $seriesId))->exists();
-        if ($customSlug !== null && $customSlug !== '') {
-            if ($exists($customSlug)) {
-                throw ValidationException::withMessages(['slug' => 'This Series slug is already in use.']);
-            }
+        $base = $customSlug ?: rtrim(substr(Str::slug($title) ?: 'series', 0, 240), '-');
 
-            return $customSlug;
-        }
-        $base = substr(Str::slug($title) ?: 'series', 0, 240);
-        $base = rtrim($base, '-');
-        $slug = $base;
-        $suffix = 2;
-        while ($exists($slug)) {
-            $slug = $base.'-'.$suffix++;
-        }
-
-        return $slug;
+        return app(SlugService::class)->unique(Series::class, $base, $seriesId);
     }
 
     private function fail(string $message): void
