@@ -1,3 +1,5 @@
+const t = text => window.adminTranslations?.[text] || text;
+import { parseChapters, chapterPreview } from './chapter-parser.js';
 export function initPublishing() {
     document.querySelectorAll('.publishing-form').forEach(form => {
         const title = form.querySelector('[name="title"], [name="name"]');
@@ -10,19 +12,21 @@ export function initPublishing() {
                 .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
             let automatic = !slug.value || slug.value === slugify(title.value);
             const updateSlug = () => {
-                if (automatic) slug.value = slugify(title.value);
+                if (automatic) slug.value = slugify(title.value) + (form.querySelector('[name="compose_mode"]:checked')?.value === 'normal' && form.dataset.author ? '/' + form.dataset.author : '');
             };
             title.addEventListener('input', updateSlug);
+            form.querySelectorAll('[name="compose_mode"]').forEach(mode => mode.addEventListener('change', updateSlug));
             slug.addEventListener('input', () => { automatic = !slug.value.trim(); updateSlug(); });
             updateSlug();
         }
+        form.addEventListener('submit', event => { if (form.querySelector('[data-upload-pending="true"]')) event.preventDefault(); });
         form.addEventListener('invalid', event => {
             let section = event.target.closest('details');
             while (section) { section.open = true; section = section.parentElement.closest('details'); }
         }, true);
         const refresh = () => {
-            if (seoTitle) seoTitle.placeholder = title?.value.trim() || 'Uses the title when left blank';
-            if (seoDescription) seoDescription.placeholder = description?.value.trim() || 'Uses the description when left blank';
+            if (seoTitle) seoTitle.placeholder = title?.value.trim() || t('Uses the title when left blank');
+            if (seoDescription) seoDescription.placeholder = description?.value.trim() || t('Uses the description when left blank');
         };
         title?.addEventListener('input', refresh);
         description?.addEventListener('input', refresh);
@@ -36,7 +40,7 @@ export function initPublishing() {
             const rows = [...picker.querySelectorAll('.choice-option')];
             rows.forEach(row => { row.hidden = !normalize(row.textContent).includes(normalize(search.value.trim())); });
             picker.querySelector('[data-choice-empty]').hidden = rows.some(row => !row.hidden);
-            picker.querySelector('[data-choice-summary]').textContent = `${picker.querySelectorAll('input:checked').length} selected`;
+            picker.querySelector('[data-choice-summary]').textContent = `${picker.querySelectorAll('input:checked').length} ${t('selected')}`;
         };
         search.addEventListener('input', refresh);
         picker.addEventListener('change', refresh);
@@ -66,17 +70,38 @@ export function initPublishing() {
         const preview = picker.querySelector('[data-image-preview]');
         const reset = picker.querySelector('[data-image-reset]');
         const error = picker.querySelector('[data-image-error]');
-        let objectUrl;
-        input.addEventListener('change', () => {
+        let objectUrl, uploadRevision = 0;
+        input.addEventListener('change', async () => {
+            const currentUpload = ++uploadRevision;
             if (objectUrl) URL.revokeObjectURL(objectUrl);
             let file = input.files[0]; error.hidden = true;
             if (file && (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
-                error.textContent = 'Choose a JPG, PNG, WebP or GIF image up to 5 MB.'; error.hidden = false; input.value = ''; file = null;
+                error.textContent = t('Choose a JPG, PNG, WebP or GIF image up to 5 MB.'); error.hidden = false; input.value = ''; file = null;
             }
             const src = file ? (objectUrl = URL.createObjectURL(file)) : image.dataset.currentSrc;
             if (src) image.src = src; else image.removeAttribute('src');
             preview.hidden = !src; reset.hidden = !file;
-            picker.querySelector('[data-image-caption]').textContent = file ? `${file.name} · Selected image` : 'Current image';
+            picker.querySelector('[data-image-caption]').textContent = file ? `${file.name} · ${t('Selected image')}` : t('Current image');
+            if (!picker.hasAttribute('data-immediate-upload')) return;
+            const path = picker.querySelector('[name="image_path"]'); path.value = '';
+            if (!file) { delete picker.dataset.uploadPending; return; }
+            picker.dataset.uploadPending = 'true';
+            picker.querySelector('[data-image-caption]').textContent = t('Uploading...');
+            try {
+                const data = new FormData(); data.append('upload', file);
+                const response = await fetch('/admin/upload/featured', { method: 'POST', body: data, headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || t('Image upload failed.'));
+                if (currentUpload !== uploadRevision) return;
+                path.value = result.path; image.src = result.url; input.value = '';
+                picker.querySelector('[data-image-caption]').textContent = t('Uploaded');
+            } catch (failure) {
+                if (currentUpload !== uploadRevision) return;
+                error.textContent = failure.message; error.hidden = false;
+                picker.dataset.uploadPending = 'true'; return;
+            } finally {
+                if (currentUpload === uploadRevision && path.value) delete picker.dataset.uploadPending;
+            }
         });
         reset.addEventListener('click', () => { input.value = ''; input.dispatchEvent(new Event('change', { bubbles: true })); });
     });
@@ -93,14 +118,14 @@ export function initPublishing() {
     const save = form.querySelector('[data-save]');
     const hint = form.querySelector('[data-save-hint]');
     const confirmation = document.querySelector('[data-import-confirm]');
-    let token = '', revision = 0, busy = false;
+    let token = '', revision = 0, busy = false, saving = false;
     const importMode = () => form.querySelector('[name="compose_mode"]:checked').value === 'import';
     const pendingUpload = () => !!form.querySelector('[data-upload-pending="true"]');
     const invalidate = () => {
         revision++; token = ''; preview.hidden = true;
         save.disabled = busy;
         if (importMode()) {
-            message.textContent = 'Save chapters directly, or use Analyze chapters for an optional preview.';
+            message.textContent = t('Save chapters directly, or use Analyze chapters for an optional preview.');
             message.className = 'small text-secondary mt-3';
         }
     };
@@ -111,8 +136,8 @@ export function initPublishing() {
             section.hidden = hidden;
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });
         });
-        save.textContent = importing ? 'Save chapters' : 'Save changes';
-        hint.textContent = importing ? 'Save chapters directly or preview with Analyze chapters. Choose Published to publish them.' : 'New content is public by default. Choose Draft to keep it private.';
+        save.textContent = importing ? t('Save chapters') : t('Save changes');
+        hint.textContent = importing ? t('Save chapters directly or preview with Analyze chapters. Choose Published to publish them.') : t('New content is public by default. Choose Draft to keep it private.');
         invalidate();
     };
     form.querySelectorAll('[name="compose_mode"]').forEach(input => input.addEventListener('change', toggle));
@@ -121,8 +146,8 @@ export function initPublishing() {
         invalidate();
     }));
     const analyzeChapters = async (showPreview = true) => {
-        if (busy) return;
-        if (pendingUpload()) { message.textContent = 'Wait for the image upload to finish, then analyze again.'; return; }
+        if (busy || saving) return;
+        if (pendingUpload()) { message.textContent = t('Wait for the image upload to finish, then analyze again.'); return; }
         invalidate();
         const currentRevision = revision;
         const data = new FormData(form);
@@ -131,31 +156,65 @@ export function initPublishing() {
         data.delete('manuscript');
         data.set('description', data.get('excerpt') || '');
         data.delete('excerpt');
-        busy = true; save.disabled = true; analyze.disabled = true; analyze.textContent = 'Analyzing...';
-        message.textContent = showPreview ? 'Building chapter previews...' : 'Preparing chapters to save...';
+        busy = true; save.disabled = true; analyze.disabled = true; analyze.textContent = t('Analyzing...');
+        message.textContent = showPreview ? t('Building chapter previews...') : t('Preparing chapters to save...');
         try {
-            const response = await fetch('/admin/import/preview', { method: 'POST', body: data, headers: { Accept: 'application/json' } });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Unable to analyze. Check your connection or sign in again.');
-            if (revision !== currentRevision || !importMode()) { message.textContent = 'The manuscript or settings changed. Save or analyze again to use the latest content.'; return; }
-            token = result.token;
-            preview.innerHTML = result.html; // Server-rendered Blade fragment; chapter HTML is sanitized on the server.
+            const result = parseChapters(data.get('content'));
+            if (revision !== currentRevision || !importMode()) return;
+            token = 'local'; preview.replaceChildren();
+            const heading = document.createElement('div');
+            heading.className = 'd-flex flex-wrap justify-content-between gap-2 align-items-start mb-3';
+            const headingText = document.createElement('div');
+            const eyebrow = document.createElement('span'); eyebrow.className = 'eyebrow'; eyebrow.textContent = t('Ready to review');
+            const title = document.createElement('h2'); title.className = 'h4 mt-2';
+            const selectedSeries = form.querySelector('[name="series_id"]');
+            title.textContent = data.get('title')?.trim() || (selectedSeries?.value ? selectedSeries.selectedOptions[0].textContent : t('Chapter previews'));
+            headingText.append(eyebrow, title);
+            const count = document.createElement('span'); count.className = 'badge text-bg-light border'; count.textContent = `${result.chapters.length} ${t('Chapters')}`;
+            heading.append(headingText, count); preview.append(heading);
+            if (result.warnings.length) {
+                const warnings = document.createElement('div'); warnings.className = 'alert alert-warning';
+                const list = document.createElement('ul'); list.className = 'mb-0';
+                result.warnings.forEach(warning => { const item = document.createElement('li'); item.textContent = warning; list.append(item); });
+                warnings.append(list); preview.append(warnings);
+            }
+            const guidance = document.createElement('p'); guidance.className = 'small text-secondary';
+            guidance.textContent = t('Open each chapter to review its complete content. To change the text, edit the manuscript and analyze again.'); preview.append(guidance);
+            result.chapters.forEach((chapter, index) => {
+                const details = document.createElement('details'), summary = document.createElement('summary'), content = document.createElement('div');
+                details.className = 'chapter-preview'; details.open = index === 0;
+                const number = document.createElement('span'); number.className = 'chapter-preview-number'; number.textContent = chapter.number;
+                const label = document.createElement('span'); label.className = 'flex-grow-1'; label.textContent = chapter.title;
+                const metadata = document.createElement('small'); metadata.className = 'd-block text-secondary fw-normal'; metadata.textContent = `${chapter.words} ${t('words')}`;
+                label.append(metadata); summary.append(number, label);
+                content.className = 'chapter-preview-content ck-content';
+                content.append(chapterPreview(chapter.html)); details.append(summary, content); preview.append(details);
+            });
             preview.hidden = !showPreview;
-            message.className = 'small text-success mt-3'; message.textContent = showPreview ? 'Chapters are ready below. Review them, then save.' : 'Chapters are ready to save.';
+            message.className = 'small text-success mt-3'; message.textContent = t('Chapters are ready. Existing chapter numbers will be checked when saving.');
             if (showPreview) preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
             message.className = 'alert alert-danger mt-3'; message.textContent = error.message;
-        } finally { busy = false; save.disabled = false; analyze.disabled = false; analyze.textContent = 'Analyze chapters'; }
+        } finally { busy = false; save.disabled = false; analyze.disabled = false; analyze.textContent = t('Analyze chapters'); }
     };
     analyze.addEventListener('click', () => analyzeChapters());
     form.addEventListener('submit', async event => {
         if (pendingUpload()) { event.preventDefault(); return; }
         if (!importMode()) return;
         event.preventDefault();
-        if (busy) return;
+        if (busy || saving) return;
         if (!token) await analyzeChapters(false);
         if (!token || !importMode() || pendingUpload()) return;
-        confirmation.elements.token.value = token; save.disabled = true; save.textContent = 'Saving...'; confirmation.requestSubmit();
+        const data = new FormData(form);
+        const source = form.querySelector('[name="manuscript"]');
+        data.set('content', source.editor ? source.editor.getData() : source.value);
+        data.set('description', data.get('excerpt') || ''); data.delete('manuscript'); data.delete('_method');
+        confirmation.action = '/admin/import/save'; confirmation.replaceChildren();
+        for (const [name, value] of data) {
+            if (value instanceof File) continue;
+            const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; confirmation.append(input);
+        }
+        saving = true; save.disabled = true; save.textContent = t('Saving...'); confirmation.requestSubmit();
     });
     toggle();
 }

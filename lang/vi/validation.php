@@ -14,5 +14,5 @@ return [
     'min' => ['string' => ':attribute cần ít nhất :min ký tự.', 'numeric' => ':attribute phải từ :min trở lên.', 'array' => ':attribute cần ít nhất :min phần tử.', 'file' => ':attribute cần ít nhất :min KB.'],
     'prohibited' => 'Bạn không được thay đổi :attribute.', 'present' => 'Thiếu :attribute.',
     'distinct' => ':attribute bị trùng.', 'uuid' => ':attribute không hợp lệ.',
-    'attributes' => ['name' => 'tên', 'title' => 'tiêu đề', 'username' => 'tên đăng nhập', 'password' => 'mật khẩu', 'slug' => 'đường dẫn', 'content' => 'nội dung', 'image' => 'ảnh', 'upload' => 'ảnh tải lên', 'role_id' => 'quyền', 'category_id' => 'danh mục', 'series_id' => 'truyện', 'chapter_number' => 'số chương', 'status' => 'trạng thái', 'head_html' => 'HTML trong thẻ head', 'site_name' => 'tên website', 'items' => 'các mục menu', 'token' => 'mã xác nhận'],
+    'attributes' => ['language' => 'ng?n ng?', 'name' => 'tên', 'title' => 'tiêu đề', 'username' => 'tên đăng nhập', 'password' => 'mật khẩu', 'slug' => 'đường dẫn', 'content' => 'nội dung', 'image' => 'ảnh', 'upload' => 'ảnh tải lên', 'role_id' => 'quyền', 'category_id' => 'danh mục', 'series_id' => 'truyện', 'chapter_number' => 'số chương', 'status' => 'trạng thái', 'head_html' => 'HTML trong thẻ head', 'site_name' => 'tên website', 'items' => 'các mục menu', 'token' => 'mã xác nhận'],
 ];

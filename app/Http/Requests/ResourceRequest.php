@@ -43,6 +43,9 @@ class ResourceRequest extends FormRequest
             $rules['category_ids.*'] = 'integer|distinct|exists:categories,id';
         }
         if ($r === 'posts') {
+            $rules['image_path'] = 'nullable|string|max:255';
+            $rules['status'] = ['required', Rule::in(['draft', 'published', 'bin'])];
+            $rules['slug'] = ['required', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?$/'];
             $rules['publish_series'] = 'nullable|boolean';
             $rules['type'] = ['required', Rule::in($id ? ['normal', 'chapter'] : ['normal'])];
             $rules['chapter_number'] = $base['chapter_number'];

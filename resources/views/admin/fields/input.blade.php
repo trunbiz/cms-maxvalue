@@ -1,15 +1,15 @@
 @php($value=old($field,$field==='content' && $resource==='posts' ? $record->content?->content : $record->getAttribute($field)))
 <div class="mb-4" data-field="{{ $field }}">
     @if(in_array($field,['tags','category_id','modules']))
-        <div class="form-label">{{ $label }}</div>
+        <div class="form-label">{{ __($label) }}</div>
     @else
-        <label class="form-label" for="field-{{ $field }}">{{ $label }}</label>
+        <label class="form-label" for="field-{{ $field }}">{{ __($label) }}</label>
     @endif
     @if($field==='modules')
         <div class="row g-2">@foreach(config('modules') as $key=>$module)
                 <div class="col-sm-6"><label class="choice-option"><input class="form-check-input" type="checkbox"
                                                                           name="modules[]"
-                                                                          value="{{ $key }}" @checked(in_array($key,old('modules',$record->modules??[])))><span>{{ $module }}</span></label>
+                                                                          value="{{ $key }}" @checked(in_array($key,old('modules',$record->modules??[])))><span>{{ __($module) }}</span></label>
                 </div>
             @endforeach</div>
     @elseif($field==='tags')
@@ -21,24 +21,24 @@
     @elseif(in_array($field,['role_id','series_id']))
         <select class="form-select" name="{{ $field }}" id="field-{{ $field }}">
             <option
-                value="">{{ $field==='series_id'?'Create a new story from the manuscript':'Select a role' }}</option>@foreach($field==='role_id'?$roles:$series as $option)
+                value="">{{ __($field==='series_id'?'Create a new story from the manuscript':'Select a role') }}</option>@foreach($field==='role_id'?$roles:$series as $option)
                 <option
                     value="{{ $option->id }}" @selected((string)$value===(string)$option->id)>{{ $option->name??$option->title }}</option>
             @endforeach</select>
     @elseif($field==='status')
         <select class="form-select" name="status" id="field-status">
-            <option value="draft" @selected(($value??'published')==='draft')>Draft</option>
-            <option value="published" @selected(($value??'published')==='published')>Public</option>
+            <option value="draft" @selected(($value??'published')==='draft')>{{ __('Unpublish') }}</option>
+            <option value="published" @selected(($value??'published')==='published')>{{ __('Publish') }}</option>
+            @if($resource==='posts')<option value="bin" @selected($value==='bin')>{{ __('Bin') }}</option>@endif
         </select>
-        <p class="form-text mb-0">Public content is visible to readers. Choose Draft to keep it private.</p>
+        <p class="form-text mb-0">{{ __('Public content is visible to readers. Choose Draft to keep it private.') }}</p>
     @elseif($field==='image')
         @include('admin.fields.image',['name'=>'image','label'=>$label,'path'=>$record->image])
     @elseif(in_array($field,['content','description','excerpt','seo_description']))
         <textarea class="form-control" id="field-{{ $field }}" name="{{ $field }}" rows="{{ $field==='content'?16:4 }}"
                   @if($field==='content') data-editor @endif>{{ $field==='content'?content_html($value):$value }}</textarea>
         @if($field==='content')
-            <p class="form-text mb-0">Format text with the toolbar. Upload an image from your device, paste a copied
-                image, or drag it into the editor.</p>
+            <p class="form-text mb-0">{{ __('Format text with the toolbar. Upload an image from your device, paste a copied image, or drag it into the editor.') }}</p>
         @endif
     @else
         <input class="form-control" id="field-{{ $field }}" name="{{ $field }}"
@@ -46,17 +46,17 @@
                value="{{ $field==='password'?'':($field==='published_at' && $value instanceof \Carbon\Carbon?$value->format('Y-m-d\TH:i'):$value) }}"
                @if($field==='password') autocomplete="new-password" @endif>
         @if($field==='password' && $record->exists)
-            <small class="text-secondary">Leave blank to keep the current password.</small>
+            <small class="text-secondary">{{ __('Leave blank to keep the current password.') }}</small>
         @endif
         @if($field==='slug')
-            <p class="form-text mb-0">{{ $resource==='posts' && !$record->exists ? 'Generated as you type the title. You can edit it directly.' : 'Leave blank to generate from the title.' }}</p>
+            <p class="form-text mb-0">{{ __($resource==='posts' && !$record->exists ? 'Generated as you type the title. You can edit it directly.' : 'Leave blank to generate from the title.') }}</p>
         @endif
     @endif
     @if($field==='seo_title')
-        <p class="form-text mb-0">Leave blank to use the title automatically.</p>
+        <p class="form-text mb-0">{{ __('Leave blank to use the title automatically.') }}</p>
     @endif
     @if($field==='seo_description')
-        <p class="form-text mb-0">Leave blank to use the description automatically.</p>
+        <p class="form-text mb-0">{{ __('Leave blank to use the description automatically.') }}</p>
     @endif
     @error($field)<p class="small text-danger mt-2 mb-0">{{ $message }}</p>@enderror
 </div>

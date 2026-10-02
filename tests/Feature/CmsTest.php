@@ -203,7 +203,8 @@ class CmsTest extends TestCase
         $this->delete('/admin/posts/'.$a->id)->assertRedirect();
         Storage::disk('public')->assertExists($path);
         $this->delete('/admin/posts/'.$b->id)->assertRedirect();
-        Storage::disk('public')->assertMissing($path);
+        Storage::disk('public')->assertExists($path);
+        $this->assertDatabaseHas('posts', ['id' => $b->id, 'status' => 'bin']);
         $this->postJson('/admin/upload/editor', ['upload' => UploadedFile::fake()->create('bad.svg', 2, 'image/svg+xml')])->assertUnprocessable();
     }
 
@@ -283,6 +284,6 @@ class CmsTest extends TestCase
         $this->deleteJson('/admin/chapters/bulk-delete', ['series_id' => $a->id, 'ids' => [$post->id]])->assertUnprocessable();
         $this->assertDatabaseHas('posts', ['id' => $post->id]);
         $this->delete('/admin/chapters/bulk-delete', ['series_id' => $b->id, 'ids' => [$post->id]])->assertRedirect();
-        $this->assertDatabaseMissing('posts', ['id' => $post->id]);
+        $this->assertDatabaseHas('posts', ['id' => $post->id, 'status' => 'bin']);
     }
 }

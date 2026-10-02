@@ -43,11 +43,26 @@ class ResourceService
                 abort_unless($actor->hasModule($module), 403);
             }
         }
+        if ($resource === 'posts' && $record->exists) {
+            abort_unless($actor->managesAllPosts() || $record->created_by === $actor->id, 403);
+        }
+        if (in_array($resource, ['posts', 'series']) && !$record->exists) $data['created_by'] = $actor->id;
+        if ($resource === 'posts') {
+            $author = $record->created_by ? User::findOrFail($record->created_by) : $actor;
+            $data['slug'] = app(PostSlugService::class)->make($data['slug'] ?: $data['title'], $author, $record->id);
+        }
+        $uploadedPath = $data['image_path'] ?? null;
+        unset($data['image_path']);
+        if ($uploadedPath) {
+            abort_unless(in_array($uploadedPath, session('featured_uploads', []), true), 422);
+        }
         $old = $record->image;
         $new = null;
         if (isset($data['image'])) {
             $new = app(MediaService::class)->upload($data['image'], $resource);
             $data['image'] = $new;
+        } elseif ($uploadedPath) {
+            $data['image'] = $uploadedPath;
         } else {
             unset($data['image']);
         }
@@ -164,6 +179,12 @@ class ResourceService
         }
         if ($resource === 'roles' && ! $actor->isSuperAdmin() && $record->name === 'Super Admin') {
             abort(403);
+        }
+        if ($resource === 'posts') {
+            abort_unless($actor->managesAllPosts() || $record->created_by === $actor->id, 403);
+            $record->update(['status' => 'bin']);
+            app(CacheInvalidator::class)->invalidate();
+            return;
         }
         $paths = [$record->image];
         if ($resource === 'series') {

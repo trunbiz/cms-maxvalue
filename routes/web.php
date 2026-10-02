@@ -8,7 +8,11 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UploadController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(\App\Http\Middleware\AdminLocale::class)->group(function () {
+    Route::post('language', function (\App\Http\Requests\AdminLanguageRequest $request) {
+        $request->session()->put('admin_locale', $request->validated('language'));
+        return back();
+    });
     Route::get('login', [AuthController::class, 'create'])->middleware('guest')->name('login');
     Route::post('login', [AuthController::class, 'store'])->middleware(['guest', 'throttle:6,1'])->name('admin.login.store');
     Route::middleware('auth')->group(function () {
@@ -19,6 +23,8 @@ Route::prefix('admin')->group(function () {
         Route::put('settings', [SettingsController::class, 'update'])->middleware('module:settings');
         Route::post('settings/publish-pages', [SettingsController::class, 'publishPages'])->middleware('module:settings');
         Route::post('upload/editor', UploadController::class);
+        Route::post('upload/featured', [UploadController::class, 'featured'])->middleware('module:posts');
+        Route::post('import/save', [ChapterImportController::class, 'saveDirect'])->middleware('module:posts');
         Route::get('posts/{id}/preview', [\App\Http\Controllers\Frontend\ReadingController::class, 'preview'])->middleware('module:posts')->whereNumber('id');
         Route::get('pages/{id}/preview', [\App\Http\Controllers\Frontend\ReadingController::class, 'pagePreview'])->middleware('module:pages')->whereNumber('id');
         Route::put('menus/{menu}/items', MenuItemsController::class)->middleware('module:menus')->whereNumber('menu');

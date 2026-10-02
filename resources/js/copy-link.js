@@ -1,3 +1,4 @@
+const t = text => window.adminTranslations?.[text] || text;
 export function initCopyLinks() {
     document.querySelectorAll('[data-copy-link]').forEach(button => button.addEventListener('click', async () => {
         const originalTitle = button.title;
@@ -11,10 +12,10 @@ export function initCopyLinks() {
                 const copied = document.execCommand('copy'); input.remove(); button.focus();
                 if (!copied) throw new Error('Clipboard unavailable');
             }
-            button.title = 'Link copied!';
+            button.title = t('Link copied!');
             button.classList.add('text-success');
-            if (status) status.textContent = 'Link copied!';
+            if (status) status.textContent = t('Link copied!');
             setTimeout(() => { button.title = originalTitle; button.classList.remove('text-success'); if (status) status.textContent = ''; }, 2000);
-        } catch { window.prompt('Copy this link:', value); }
+        } catch { window.prompt(t('Copy this link:'), value); }
     }));
 }

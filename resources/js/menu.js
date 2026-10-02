@@ -1,3 +1,4 @@
+const t = text => window.adminTranslations?.[text] || text;
 import Sortable from 'sortablejs';
 export function initMenu() {
     const editor = document.querySelector('[data-menu-editor]');
@@ -8,9 +9,9 @@ export function initMenu() {
     const makeItem = data => {
         const li = document.createElement('li'); li.dataset.id = data.id; li.menuData = data;
         const row = document.createElement('div'); row.className = 'd-flex align-items-center gap-2';
-        const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.textContent = '⠿'; handle.title = 'Drag to reorder';
-        const input = document.createElement('input'); input.className = 'form-control form-control-sm'; input.value = data.label; input.setAttribute('aria-label','Menu label'); input.addEventListener('input', () => { data.label = input.value; });
-        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn-sm btn-outline-danger'; remove.textContent = 'Remove'; remove.addEventListener('click', () => li.remove());
+        const handle = document.createElement('span'); handle.className = 'drag-handle'; handle.textContent = '⠿'; handle.title = t('Drag to reorder');
+        const input = document.createElement('input'); input.className = 'form-control form-control-sm'; input.value = data.label; input.setAttribute('aria-label',t('Menu label')); input.addEventListener('input', () => { data.label = input.value; });
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn-sm btn-outline-danger'; remove.textContent = t('Remove'); remove.addEventListener('click', () => li.remove());
         row.append(handle, input, remove); li.append(row);
         const children = document.createElement('ul'); children.className = 'menu-sortable list-unstyled'; li.append(children); sortable(children);
         return li;
@@ -30,6 +31,6 @@ export function initMenu() {
             const response = await fetch(editor.dataset.url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ items }) });
             const result = await response.json(); if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message);
             location.reload();
-        } catch(error) { status.textContent = error.message || 'Unable to save the menu.'; } finally { event.target.disabled = false; }
+        } catch(error) { status.textContent = error.message || t('Unable to save the menu.'); } finally { event.target.disabled = false; }
     });
 }

@@ -167,23 +167,30 @@ class ChapterImportService
                 }
                 $series->update($meta);
             } else {
-                $series = Series::create($meta + ['title' => $preview['title'], 'slug' => $this->seriesSlug($preview['title'], $options['slug'] ?? null), 'description' => $preview['description'], 'image' => $options['image'] ?? null]);
+                $series = Series::create($meta + ['created_by' => $options['created_by'] ?? null, 'title' => $preview['title'], 'slug' => $this->seriesSlug($preview['title'], $options['slug'] ?? null), 'description' => $preview['description'], 'image' => $options['image'] ?? null]);
             }
             $tagIds = app(ResourceService::class)->tagIds($options['tags'] ?? []);
             app(ResourceService::class)->syncTags($series, $tagIds);
             $categoryIds = $options['category_ids'] ?? array_filter([$meta['category_id']]);
             app(ResourceService::class)->syncCategories($series, $categoryIds);
-            $existing = $series->chapters()->select(['id', 'chapter_number', 'slug', 'image'])->get()->keyBy('chapter_number');
+            $existing = $series->chapters()->select(['id', 'chapter_number', 'slug', 'image', 'created_by'])->get()->keyBy('chapter_number');
             $rows = [];
             $contents = [];
+            $actor = isset($options['created_by']) ? \App\Models\User::findOrFail($options['created_by']) : null;
+            $chapterTitles = [];
+            foreach ($preview['chapters'] as $chapter) $chapterTitles[$chapter['number']] = $chapter['title'].'-'.$chapter['number'];
+            $slugs = $actor ? app(PostSlugService::class)->makeMany($chapterTitles, $actor) : [];
             foreach ($preview['chapters'] as $chapter) {
                 $number = $chapter['number'];
                 if (($options['duplicates'] ?? 'skip') === 'skip' && (isset($existing[$number]) || isset($rows[$number]))) {
                     continue;
                 }
-                $slug = $existing[$number]->slug ?? $series->slug.'-'.$number.'-'.Str::lower(Str::random(6));
+                if (isset($existing[$number]) && isset($options['created_by'])) {
+                    abort_unless($actor->managesAllPosts() || $existing[$number]->created_by === $actor->id || ($options['duplicates'] ?? 'skip') === 'skip', 403);
+                }
+                $slug = $existing[$number]->slug ?? ($slugs[$number] ?? $series->slug.'-'.$number.'-'.Str::lower(Str::random(6)));
                 $image = ! empty($options['share_image']) ? $series->image : ($existing[$number]->image ?? null);
-                $rows[$number] = ['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => $image, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
+                $rows[$number] = ['created_by' => $existing[$number]->created_by ?? $options['created_by'] ?? null, 'type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => $image, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
                 $contents[$number] = clean_html($chapter['content']);
                 if (isset($existing[$number]) && $existing[$number]->image) {
                     $oldImages[] = $existing[$number]->image;

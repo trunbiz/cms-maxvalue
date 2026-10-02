@@ -15,7 +15,7 @@ class BrowseRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['q' => 'nullable|string|max:150', 'page' => 'nullable|integer|min:1|max:100000', 'series_page' => 'nullable|integer|min:1|max:100000', 'series_id' => 'nullable|integer|min:1'];
+        return ['status' => 'nullable|in:published,draft,bin', 'category_id' => 'nullable|integer|exists:categories,id', 'created_by' => 'nullable|integer|exists:users,id', 'q' => 'nullable|string|max:150', 'page' => 'nullable|integer|min:1|max:100000', 'series_page' => 'nullable|integer|min:1|max:100000', 'series_id' => 'nullable|integer|min:1'];
     }
 
     protected function failedValidation(Validator $validator): void

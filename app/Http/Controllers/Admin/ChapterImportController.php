@@ -16,6 +16,21 @@ use Illuminate\Support\Str;
 
 class ChapterImportController extends Controller
 {
+    public function saveDirect(ChapterImportRequest $request, ChapterImportService $service, MediaService $media)
+    {
+        $options = $request->validated();
+        $preview = $service->preview($options['content'], isset($options['series_id']) ? (int) $options['series_id'] : null, $options);
+        unset($options['content']);
+        $options['created_by'] = $request->user()->id;
+        if ($request->hasFile('image')) $options['image'] = $media->upload($request->file('image'), 'imports');
+        if (!empty($options['image_path'])) {
+            abort_unless(in_array($options['image_path'], session('featured_uploads', []), true), 422);
+            $options['image'] = $options['image_path'];
+        }
+        $series = $service->import($preview, $options);
+        return redirect('/admin/posts?series_id='.$series->id)->with('success', 'Chapters imported successfully.');
+    }
+
     public function create()
     {
         return redirect('/admin/posts/create?mode=import');
@@ -24,6 +39,7 @@ class ChapterImportController extends Controller
     public function preview(ChapterImportRequest $request, ChapterImportService $service, MediaService $media)
     {
         $options = $request->validated();
+        $options['created_by'] = $request->user()->id;
         $preview = $service->preview($options['content'], isset($options['series_id']) ? (int) $options['series_id'] : null, $options);
         unset($options['content']);
         if ($request->hasFile('image')) {
@@ -56,7 +72,7 @@ class ChapterImportController extends Controller
 
     public function bulkDelete(BulkDeleteRequest $request, ResourceService $service)
     {
-        $posts = Post::select(['id', 'image', 'series_id'])->where('series_id', $request->integer('series_id'))->whereIn('id', $request->validated('ids'))->get();
+        $posts = Post::select(['id', 'image', 'series_id', 'created_by'])->where('series_id', $request->integer('series_id'))->whereIn('id', $request->validated('ids'))->when(!$request->user()->managesAllPosts(), fn ($q) => $q->where('created_by', $request->user()->id))->get();
         abort_unless($posts->count() === count($request->validated('ids')), 422, 'A selected chapter does not belong to this story.');
         foreach ($posts as $post) {
             $service->delete('posts', $post, $request->user());

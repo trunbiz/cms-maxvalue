@@ -9,7 +9,7 @@ class Series extends Model
 {
     use \App\Models\Concerns\SelectExplicitColumns, HasFactory;
 
-    protected $fillable = ['title', 'slug', 'description', 'image', 'category_id', 'status', 'seo_title', 'seo_keywords', 'seo_description', 'is_demo'];
+    protected $fillable = ['created_by', 'title', 'slug', 'description', 'image', 'category_id', 'status', 'seo_title', 'seo_keywords', 'seo_description', 'is_demo'];
 
     protected $table = 'series';
 

@@ -168,6 +168,7 @@ class ReadingController extends Controller
 
     public function preview(int $id)
     {
+        abort_unless(auth()->user()->managesAllPosts() || Post::whereKey($id)->where('created_by', auth()->id())->exists(), 403);
         $article = Post::select(self::POST_COLUMNS)->with(['content', 'tags', 'category', 'series'])->where('type', 'normal')->findOrFail($id);
 
         return response($this->articleView($article, true))->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex, nofollow');

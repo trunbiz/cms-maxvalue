@@ -28,7 +28,8 @@ class ResourceController extends Controller
     {
         $model = $this->definition($resource)['model'];
 
-        return $model::query()->select(array_merge(['id'], (new $model)->getFillable(), ['created_at', 'updated_at']));
+        return $model::query()->select(array_merge(['id'], (new $model)->getFillable(), ['created_at', 'updated_at']))
+            ->when(in_array($resource, ['posts', 'series']) && !auth()->user()->managesAllPosts(), fn ($q) => $q->where('created_by', auth()->id()));
     }
 
     public function index(BrowseRequest $request, string $resource)
@@ -57,9 +58,15 @@ class ResourceController extends Controller
                 $q->where('series_id', $request->integer('series_id'))->orderBy('chapter_number');
             }
         }
+        if (in_array($resource, ['posts', 'series'])) {
+            foreach (['status', 'created_by'] as $filter) {
+                if ($request->filled($filter)) $q->where($filter, $request->validated($filter));
+            }
+            if ($request->filled('category_id')) $q->whereHas('categories', fn ($c) => $c->where('categories.id', $request->integer('category_id')));
+        }
         $records = $q->orderByDesc('id')->paginate(20)->withQueryString();
 
-        return view('admin.index', compact('resource', 'definition', 'records'));
+        return view('admin.index', compact('resource', 'definition', 'records') + ['categories' => Category::select(['id','name'])->get(), 'series' => Series::select(['id','title'])->when(!auth()->user()->managesAllPosts(), fn ($q) => $q->where('created_by', auth()->id()))->get(), 'authors' => User::select(['id','name','role_id'])->when(!auth()->user()->managesAllPosts(), fn ($q) => $q->whereKey(auth()->id()))->get()]);
     }
 
     public function create(string $resource)
@@ -92,7 +99,7 @@ class ResourceController extends Controller
             $record->load('items');
         }
 
-        return view('admin.form', compact('resource', 'definition', 'record') + ['roles' => Role::select(['id', 'name'])->get(), 'categories' => Category::select(['id', 'name'])->get(), 'tags' => Tag::select(['id', 'name'])->get(), 'series' => Series::select(['id', 'title'])->orderBy('title')->get(), 'pages' => \App\Models\Page::select(['id', 'title'])->get()]);
+        return view('admin.form', compact('resource', 'definition', 'record') + ['roles' => Role::select(['id', 'name'])->get(), 'categories' => Category::select(['id', 'name'])->get(), 'tags' => Tag::select(['id', 'name'])->get(), 'series' => Series::select(['id', 'title'])->when(!auth()->user()->managesAllPosts(), fn ($q) => $q->where('created_by', auth()->id()))->orderBy('title')->get(), 'pages' => \App\Models\Page::select(['id', 'title'])->get()]);
     }
 
     public function store(ResourceRequest $request, string $resource, ResourceService $service)
@@ -119,6 +126,6 @@ class ResourceController extends Controller
 
     public function dashboard()
     {
-        return view('admin.dashboard', ['counts' => ['Articles' => Post::count(), 'Stories' => Series::count(), 'Categories' => Category::count(), 'Users' => User::count()], 'posts' => Post::select(['id', 'title', 'type', 'status', 'created_at'])->latest()->limit(10)->get()]);
+        return view('admin.dashboard', ['counts' => ['Articles' => $this->query('posts')->count(), 'Stories' => Series::count(), 'Categories' => Category::count(), 'Users' => User::count()], 'posts' => $this->query('posts')->latest()->limit(10)->get()]);
     }
 }

@@ -28,6 +28,11 @@ class User extends Authenticatable
         return $this->role?->name === 'Super Admin';
     }
 
+    public function managesAllPosts(): bool
+    {
+        return $this->isSuperAdmin() || $this->role?->name === 'Admin';
+    }
+
     public function hasModule(string $module): bool
     {
         return $this->isSuperAdmin() || in_array($module, $this->role?->modules ?? [], true);
