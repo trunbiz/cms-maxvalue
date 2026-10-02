@@ -45,9 +45,9 @@
                     @endif
                 @endforeach
             </nav>
-{{--            <a href="/" class="mt-auto pt-5 text-white-50">{{ __('View website ↗') }}</a></div>--}}
+{{--            <a href="/" class="mt-auto pt-5 text-white-50">{{ __('View website ↗') }}</a>--}}
+        </div>
     </aside>
-    <div class="admin-main">
     <div class="admin-main">
         <header class="admin-topbar">
             <button class="btn btn-outline-secondary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sidebar"

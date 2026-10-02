@@ -2,7 +2,7 @@
     <details data-chapter-sticky>
         <summary class="chapter-sticky-summary">
             <span><small>Currently reading</small><strong>Chapter {{ $chapter->chapter_number }}</strong></span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
         </summary>
         <div class="chapter-sticky-panel">
             <p class="chapter-sticky-title">{{ $chapter->title }}</p>

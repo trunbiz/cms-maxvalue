@@ -64,7 +64,7 @@ document.querySelectorAll('[data-continue-series]').forEach(link => {
 
 const chapterSticky = document.querySelector('[data-chapter-sticky]');
 if (chapterSticky) {
-    chapterSticky.open = window.matchMedia('(min-width: 1600px)').matches;
+    chapterSticky.open = false;
     const revealCurrent = () => {
         const list = chapterSticky.querySelector('.chapter-sticky-list');
         const current = list.querySelector('[aria-current="page"]');
@@ -72,6 +72,9 @@ if (chapterSticky) {
     };
     chapterSticky.addEventListener('toggle', revealCurrent);
     revealCurrent();
+    document.addEventListener('pointerdown', event => {
+        if (chapterSticky.open && !chapterSticky.contains(event.target)) chapterSticky.open = false;
+    });
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape' && chapterSticky.open) {
             const hadFocus = chapterSticky.contains(document.activeElement);

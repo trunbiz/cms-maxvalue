@@ -10,7 +10,7 @@ class PublicCacheProfile extends CacheAllSuccessfulGetRequests
 {
     public function shouldCacheRequest(Request $request): bool
     {
-        return $request->isMethod('GET');
+        return $request->isMethod('GET') && ! is_file(public_path('hot'));
     }
 
     public function shouldCacheResponse(Response $response): bool
@@ -20,6 +20,9 @@ class PublicCacheProfile extends CacheAllSuccessfulGetRequests
 
     public function useCacheNameSuffix(Request $request): string
     {
-        return '';
+        // Cached HTML must reference assets from the current Vite build.
+        $manifest = public_path('build/manifest.json');
+
+        return is_file($manifest) ? (hash_file('sha256', $manifest) ?: '') : '';
     }
 }
