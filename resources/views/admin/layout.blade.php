@@ -19,10 +19,10 @@
         <div class="offcanvas-body d-flex flex-column"><a class="admin-brand"
                                                           href="/admin">OnePublish<span>{{ __('PUBLISHING WORKSPACE') }}</span></a>
             <nav class="nav flex-column admin-navigation" aria-label="{{ __('Admin navigation') }}">
-                @php($navigationIcons = ['posts' => 'chapters', 'series' => 'books', 'categories' => 'folder', 'tags' => 'tag', 'dashboard' => 'dashboard', 'settings' => 'settings', 'users' => 'users', 'roles' => 'shield'])
+                @php($navigationIcons = ['posts' => 'chapters', 'series' => 'books', 'categories' => 'folder', 'dashboard' => 'dashboard', 'settings' => 'settings', 'users' => 'users', 'roles' => 'shield'])
                 @php($navigationGroups = [
                     'Publishing' => ['posts' => 'Articles & chapters'],
-                    'Organization' => ['categories' => 'Categories', 'tags' => 'Tags'],
+                    'Organization' => ['categories' => 'Categories'],
                     'Website' => ['dashboard' => 'Dashboard', 'settings' => 'Settings'],
                     'Access management' => ['users' => 'Users', 'roles' => 'Roles'],
                 ])
