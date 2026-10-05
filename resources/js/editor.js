@@ -1,17 +1,23 @@
 import { ClassicEditor, Essentials, Paragraph, Bold, Italic, Underline, Strikethrough, RemoveFormat, Link, List, Heading, BlockQuote, Image, ImageUpload, ImageToolbar, ImageCaption, ImageStyle, ImageTextAlternative, Table, TableToolbar, PendingActions } from 'ckeditor5';
 class UploadAdapter {
-    constructor(loader) { this.loader = loader; this.controller = new AbortController(); }
+    constructor(loader, element) { this.loader = loader; this.element = element; this.controller = new AbortController(); }
     async upload() {
-        const data = new FormData(); data.append('upload', await this.loader.file);
-        const response = await fetch('/admin/upload/editor', { method: 'POST', body: data, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }, signal: this.controller.signal });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.url) throw new Error(result.errors?.upload?.[0] || result.message || 'Unable to upload the image.');
-        return { default: result.url };
+        delete this.element.dataset.uploadFailed;
+        try {
+            const data = new FormData(); data.append('upload', await this.loader.file);
+            const response = await fetch('/admin/upload/editor', { method: 'POST', body: data, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }, signal: this.controller.signal });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.url) throw new Error(result.errors?.upload?.[0] || result.message || 'Unable to upload the image.');
+            return { default: result.url };
+        } catch (error) {
+            if (!this.controller.signal.aborted) this.element.dataset.uploadFailed = 'true';
+            throw error;
+        }
     }
     abort() { this.controller.abort(); }
 }
 function ImageUploadAdapter(editor) {
-    editor.plugins.get('FileRepository').createUploadAdapter = loader => new UploadAdapter(loader);
+    editor.plugins.get('FileRepository').createUploadAdapter = loader => new UploadAdapter(loader, editor.sourceElement);
 }
 export function initEditors() {
     document.querySelectorAll('[data-editor]').forEach(element => {
@@ -32,7 +38,6 @@ export function initEditors() {
                 element.value = editor.getData();
                 if (editor.plugins.get('PendingActions').hasAny) {
                     event.preventDefault();
-                    alert('Please wait for the image upload to finish before saving.');
                 }
             });
         }).catch(() => { const note = document.createElement('p'); note.className = 'text-danger'; note.textContent = 'The editor could not load. You can still enter content in the text area.'; element.after(note); });

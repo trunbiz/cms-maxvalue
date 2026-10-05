@@ -17,6 +17,7 @@ if (document.querySelector('[data-editor]')) import('./editor-loader').then(({ i
 if (document.querySelector('[data-menu-editor]')) import('./menu').then(({ initMenu }) => initMenu());
 if (document.querySelector('.admin-body')) import('./publishing').then(({ initPublishing }) => initPublishing());
 if (document.querySelector('[data-copy-link]')) import('./copy-link').then(({ initCopyLinks }) => initCopyLinks());
+if (document.querySelector('[data-permalink-settings]')) import('./permalinks').then(({ initPermalinks }) => initPermalinks());
 
 const readStored = (key, fallback = {}) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 const saveStored = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
@@ -45,15 +46,7 @@ if (reader) {
         const link = event.key === 'ArrowLeft' ? document.querySelector('[data-previous]') : event.key === 'ArrowRight' ? document.querySelector('[data-next]') : null;
         if (link) { event.preventDefault(); location.assign(link.href); }
     });
-    const content = document.getElementById('chapter-content');
-    let scheduled = false;
-    const progress = () => {
-        const rect = content.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, -rect.top / Math.max(1, rect.height - innerHeight)));
-        document.getElementById('reading-progress').style.width = `${ratio * 100}%`; scheduled = false;
-    };
-    window.addEventListener('scroll', () => { if (!scheduled) { scheduled = true; requestAnimationFrame(progress); } }, { passive: true });
-    window.addEventListener('resize', progress); progress();
+
 }
 document.querySelectorAll('[data-continue-series]').forEach(link => {
     const item = readStored('reader.history')[link.dataset.continueSeries];
@@ -82,4 +75,20 @@ if (chapterSticky) {
             if (hadFocus) chapterSticky.querySelector('summary').focus();
         }
     });
+}
+
+const bulkPosts = document.querySelector('[data-bulk-posts]');
+if (bulkPosts) {
+    const all = document.querySelector('[data-select-all]');
+    const boxes = [...document.querySelectorAll('[data-select-post]')];
+    const updateSelection = () => {
+        const count = boxes.filter(box => box.checked).length;
+        bulkPosts.querySelector('[data-bulk-actions]').hidden = count === 0;
+        bulkPosts.querySelector('[data-selected-count]').textContent = `${count} selected`;
+        all.checked = count > 0 && count === boxes.length;
+        all.indeterminate = count > 0 && count < boxes.length;
+    };
+    all.addEventListener('change', () => { boxes.forEach(box => box.checked = all.checked); updateSelection(); });
+    boxes.forEach(box => box.addEventListener('change', updateSelection));
+    updateSelection();
 }

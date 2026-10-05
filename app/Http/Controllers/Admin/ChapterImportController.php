@@ -28,7 +28,7 @@ class ChapterImportController extends Controller
             $options['image'] = $options['image_path'];
         }
         $series = $service->import($preview, $options);
-        return redirect('/admin/posts?series_id='.$series->id)->with('success', 'Chapters imported successfully.');
+        return redirect('/admin/posts')->with('success', 'Chapters imported successfully.');
     }
 
     public function create()
@@ -66,7 +66,7 @@ class ChapterImportController extends Controller
             $series = $service->import($data['preview'], $data['options']);
             Cache::forget($key);
 
-            return redirect('/admin/posts?series_id='.$series->id)->with('success', 'Chapters imported successfully.');
+            return redirect('/admin/posts')->with('success', 'Chapters imported successfully.');
         });
     }
 

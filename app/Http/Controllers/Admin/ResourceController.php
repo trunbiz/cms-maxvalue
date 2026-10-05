@@ -53,7 +53,13 @@ class ResourceController extends Controller
             $q->withCount('posts');
         }
         if ($resource === 'posts') {
-            $q->with('series');
+            $q->with(['series', 'creator']);
+            if ($request->filled('created_from')) {
+                $q->where('created_at', '>=', \Carbon\Carbon::parse($request->validated('created_from'))->startOfDay());
+            }
+            if ($request->filled('created_until')) {
+                $q->where('created_at', '<', \Carbon\Carbon::parse($request->validated('created_until'))->startOfDay()->addDay());
+            }
             if ($request->filled('series_id')) {
                 $q->where('series_id', $request->integer('series_id'))->orderBy('chapter_number');
             }
@@ -107,14 +113,14 @@ class ResourceController extends Controller
         $model = $this->definition($resource)['model'];
         $record = $service->save($resource, new $model, $request->validated(), $request->user());
 
-        return redirect('/admin/'.$resource.'/'.$record->id.'/edit')->with('success', 'Created successfully.');
+        return redirect($resource === 'posts' ? '/admin/posts' : '/admin/'.$resource.'/'.$record->id.'/edit')->with('success', 'Created successfully.');
     }
 
     public function update(ResourceRequest $request, string $resource, int $id, ResourceService $service)
     {
         $service->save($resource, $this->query($resource)->findOrFail($id), $request->validated(), $request->user());
 
-        return back()->with('success', 'Changes saved.');
+        return ($resource === 'posts' ? redirect('/admin/posts') : back())->with('success', 'Changes saved.');
     }
 
     public function destroy(Request $request, string $resource, int $id, ResourceService $service)
@@ -122,6 +128,22 @@ class ResourceController extends Controller
         $service->delete($resource, $this->query($resource)->findOrFail($id), $request->user());
 
         return redirect('/admin/'.$resource)->with('success', 'Deleted successfully.');
+    }
+
+    public function bulk(\App\Http\Requests\BulkPostsRequest $request, \App\Services\CacheInvalidator $cache)
+    {
+        $data = $request->validated();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $data) {
+            $posts = Post::select(['id', 'created_by', 'published_at'])->whereIn('id', $data['ids'])->lockForUpdate()->get();
+            abort_unless($request->user()->managesAllPosts() || $posts->every(fn ($post) => $post->created_by === $request->user()->id), 403);
+            foreach ($posts as $post) {
+                $post->status = $data['action'];
+                if ($data['action'] === 'published' && (!$post->published_at || $post->published_at->isFuture())) $post->published_at = now();
+                $post->save();
+            }
+        });
+        $cache->invalidate();
+        return back()->with('success', 'Selected posts updated.');
     }
 
     public function dashboard()

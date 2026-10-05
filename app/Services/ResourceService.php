@@ -11,8 +11,20 @@ use Illuminate\Validation\ValidationException;
 
 class ResourceService
 {
+    public function withDefaultCategory(array $data): array
+    {
+        if (empty($data['category_ids']) && empty($data['category_id'])) {
+            $category = \App\Models\Category::firstOrCreate(['slug' => 'stories'], ['name' => 'Stories']);
+            $data['category_id'] = $category->id;
+            $data['category_ids'] = [$category->id];
+        }
+
+        return $data;
+    }
+
     public function save(string $resource, $record, array $data, $actor)
     {
+        if ($resource === 'posts' && !$record->exists) $data = $this->withDefaultCategory($data);
         if ($resource === 'users') {
             $targetRole = \App\Models\Role::select(['id', 'name', 'modules'])->findOrFail($data['role_id']);
             if (! $actor->isSuperAdmin() && ($targetRole->name === 'Super Admin' || ($record->exists && $record->isSuperAdmin()))) {

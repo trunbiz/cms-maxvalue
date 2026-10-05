@@ -23,6 +23,11 @@ class Handler extends ExceptionHandler
      */
     public function register(): void
     {
+        $this->renderable(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
+            if (! $request->expectsJson() && ! $request->is('admin', 'admin/*', 'api', 'api/*')) {
+                return app(\App\Http\Controllers\Frontend\ReadingController::class)->notFound();
+            }
+        });
         $this->reportable(function (Throwable $e) {
             //
         });

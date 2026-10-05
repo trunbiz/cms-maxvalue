@@ -1,23 +1,10 @@
 @extends('frontend.layout')
 @section('content')
-<section class="reading-hero mb-5">
-    <div>
-        <span class="eyebrow">WELCOME TO {{ $settings['site_name']??'Reading Corner' }}</span>
-        <h1>Take a moment.<br>Discover a new perspective.</h1>
-        <p>Make room for ideas, stories, and the pleasure of reading.<br>Find a quiet corner and explore at your own pace.</p>
-        <a class="btn btn-primary px-4" href="/articles">Explore the articles <span class="ms-3">→</span></a>
-    </div>
-    <div class="hero-art" aria-hidden="true">
-        <div class="hero-orbit"></div>
-        <div class="hero-book"><span>A WORLD<br>BETWEEN<br>THE PAGES</span><div>READ & REFLECT</div></div>
-        <span class="hero-note">For curious minds<br>and thoughtful readers.</span>
-    </div>
-</section>
-<section class="mb-5" id="latest-articles">
-    <div class="section-heading"><div><span class="eyebrow">READ & REFLECT</span><h2>Latest articles</h2></div><a href="/articles">View all →</a></div>
+<section class="mb-5" id="latest-chapters">
+    <div class="section-heading"><div><span class="eyebrow">READ & REFLECT</span><h2>Latest chapters</h2></div><a href="/stories">View all →</a></div>
     <div class="row g-4">
-        @forelse($posts as $post)<div class="col-md-6 col-lg-4">@include('frontend.post-card')</div>
-        @empty<div class="col-12"><p class="text-muted">No articles have been published yet.</p></div>@endforelse
+        @forelse($posts as $post)<div class="col-md-6 col-lg-4">@include('frontend.chapter-card')</div>
+        @empty<div class="col-12"><p class="text-muted">No chapters have been published yet.</p></div>@endforelse
     </div>
 </section>
 @if($posts->isNotEmpty()||$series->isNotEmpty())

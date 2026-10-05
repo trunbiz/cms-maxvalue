@@ -20,7 +20,7 @@ class ReadTrackingDisabledTest extends TestCase
         $article = Post::factory()->create(['type' => 'normal', 'series_id' => null,
             'status' => 'published', 'published_at' => now()->subDay()]);
         foreach (['/', '/stories/'.$series->slug, post_url($chapter), post_url($article)] as $url) {
-            $this->get($url)->assertOk()->assertDontSee('data-view-type', false)
+            $this->followingRedirects()->get($url)->assertOk()->assertDontSee('data-view-type', false)
                 ->assertDontSee('data-view-id', false)->assertDontSee(' reads');
         }
         $this->assertStringNotContainsString('/api/views', file_get_contents(resource_path('js/app.js')));

@@ -18,6 +18,11 @@ class Post extends Model
         return $this->belongsTo(Category::class)->select(['id', 'name', 'slug']);
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by')->without('role')->select(['id', 'name']);
+    }
+
     public function categories()
     {
         return $this->belongsToMany(Category::class)->select(['categories.id', 'name', 'slug']);

@@ -65,24 +65,26 @@ class SocialPreviewTest extends TestCase
         $this->assertMeta($response, 'property', 'og:description', 'Changed description');
         $series = Series::factory()->create(['status' => 'published', 'title' => 'Series title',
             'description' => 'Series description', 'seo_title' => null, 'seo_description' => null]);
-        $response = $this->get('/stories/'.$series->slug)->assertOk();
-        $this->assertMeta($response, 'property', 'og:title', 'Series title');
+        $chapter = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'title' => 'First chapter', 'chapter_number' => 1, 'excerpt' => null]);
+        $this->get('/stories/'.$series->slug)->assertRedirect(post_url($chapter));
+        $response = $this->get(post_url($chapter))->assertOk();
+        $this->assertMeta($response, 'property', 'og:title', 'First chapter');
         $this->assertMeta($response, 'name', 'description', 'Series description');
     }
 
-    public function test_missing_featured_image_uses_a_jpeg_fallback_and_content_summary(): void
+    public function test_missing_featured_image_uses_fixed_logo_and_content_summary(): void
     {
         $post = Post::factory()->create(['type' => 'normal', 'status' => 'published', 'published_at' => now()->subDay(),
             'image' => null, 'excerpt' => '', 'seo_description' => null]);
         $post->content()->create(['content' => '<p>First paragraph.</p><p>Second paragraph.</p>']);
         $response = $this->get(post_url($post))->assertOk();
-        $this->assertMeta($response, 'property', 'og:image', asset('images/social-default.jpg'));
-        $this->assertMeta($response, 'property', 'og:image:type', 'image/jpeg');
+        $this->assertMeta($response, 'property', 'og:image', media_url('images/logo/logo.png'));
+        $this->assertMeta($response, 'property', 'og:image:type', 'image/png');
         $this->assertMeta($response, 'property', 'og:description', 'First paragraph. Second paragraph.');
         $this->assertFileExists(public_path('images/social-default.jpg'));
         Setting::create(['key' => 'logo', 'value' => 'settings/logo.png']);
         app(\App\Services\CacheInvalidator::class)->invalidate();
         $response = $this->get(post_url($post))->assertOk();
-        $this->assertMeta($response, 'property', 'og:image', url(media_url('settings/logo.png')));
+        $this->assertMeta($response, 'property', 'og:image', media_url('images/logo/logo.png'));
     }
 }

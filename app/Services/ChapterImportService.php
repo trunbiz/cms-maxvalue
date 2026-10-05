@@ -143,6 +143,7 @@ class ChapterImportService
     public function import(array $preview, array $options): Series
     {
         $series = DB::transaction(function () use ($preview, $options) {
+            if (!$preview['series_id']) $options = app(ResourceService::class)->withDefaultCategory($options);
             $meta = ['category_id' => $options['category_id'] ?? null, 'status' => $options['status'], 'updated_at' => now(), 'is_demo' => false];
             foreach (['seo_title', 'seo_keywords', 'seo_description'] as $field) {
                 if (array_key_exists($field, $options)) {
@@ -152,6 +153,9 @@ class ChapterImportService
             $oldImages = [];
             if ($preview['series_id']) {
                 $series = Series::select(['id', 'title', 'slug', 'description', 'image', 'category_id', 'status'])->lockForUpdate()->findOrFail($preview['series_id']);
+                if ($options['status'] === 'draft' && $series->status === 'published') {
+                    $meta['status'] = 'published';
+                }
                 if (! empty($options['title'])) {
                     $meta['title'] = $preview['title'];
                 }
@@ -190,7 +194,7 @@ class ChapterImportService
                 }
                 $slug = $existing[$number]->slug ?? ($slugs[$number] ?? $series->slug.'-'.$number.'-'.Str::lower(Str::random(6)));
                 $image = ! empty($options['share_image']) ? $series->image : ($existing[$number]->image ?? null);
-                $rows[$number] = ['created_by' => $existing[$number]->created_by ?? $options['created_by'] ?? null, 'type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $meta['status'], 'published_at' => now(), 'image' => $image, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
+                $rows[$number] = ['created_by' => $existing[$number]->created_by ?? $options['created_by'] ?? null, 'type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => $number, 'title' => $chapter['title'], 'slug' => $slug, 'category_id' => $meta['category_id'], 'status' => $options['status'], 'published_at' => now(), 'image' => $image, 'created_at' => now(), 'updated_at' => now(), 'is_demo' => false];
                 $contents[$number] = clean_html($chapter['content']);
                 if (isset($existing[$number]) && $existing[$number]->image) {
                     $oldImages[] = $existing[$number]->image;

@@ -43,7 +43,11 @@ class CmsTest extends TestCase
         $this->assertDatabaseCount('series', 5);
         foreach (['/', '/pages/about', '/categories/literature', '/tags/adventure', '/stories/where-the-wind-tells-stories', '/stories/where-the-wind-tells-stories/where-the-wind-tells-stories-chapter-1', '/articles/reading-slowly-to-know-yourself', '/search?q=ngay', '/robots.txt', '/sitemap.xml'] as $url) {
             $response = $this->get($url);
-            $response->assertOk();
+            if ($url === '/stories/where-the-wind-tells-stories') {
+                $response->assertRedirect('/stories/where-the-wind-tells-stories/where-the-wind-tells-stories-chapter-1');
+            } else {
+                $response->assertOk();
+            }
             $this->assertEmpty($response->headers->getCookies(), $url);
         }
     }
@@ -52,10 +56,10 @@ class CmsTest extends TestCase
     {
         $this->seed();
         $this->actingAs(User::select(['id', 'name', 'username', 'password', 'role_id'])->first());
-        foreach (['dashboard', 'settings', 'users', 'roles', 'categories', 'tags', 'posts', 'series', 'pages', 'menus'] as $resource) {
+        foreach (['dashboard', 'settings', 'users', 'roles', 'categories', 'tags', 'posts', 'series'] as $resource) {
             $this->get('/admin/'.$resource)->assertOk();
         }
-        foreach (['users', 'roles', 'categories', 'tags', 'posts', 'series', 'pages', 'menus'] as $resource) {
+        foreach (['users', 'roles', 'categories', 'tags', 'posts', 'series'] as $resource) {
             $this->get('/admin/'.$resource.'/create')->assertOk();
             $this->get('/admin/'.$resource.'/1/edit')->assertOk();
         }
@@ -99,7 +103,7 @@ class CmsTest extends TestCase
         $this->assertDatabaseHas('tags', ['slug' => 'the-moi']);
         $this->get('/articles/'.$post->slug)->assertOk()->assertSee('Đẹp');
         $this->actingAs($this->editor(['settings']));
-        $this->put('/admin/settings', ['site_name' => 'Tên mới', 'head_html' => '<script></script>'])->assertSessionHasErrors('head_html');
+        $this->put('/admin/settings', ['permalink_structure' => 'name', 'head_html' => '<script></script>'])->assertSessionHasNoErrors();
     }
 
     public function test_drafts_future_posts_and_wrong_series_are_hidden(): void
@@ -175,7 +179,7 @@ class CmsTest extends TestCase
     {
         $admin = $this->admin();
         $this->actingAs($admin);
-        $response = $this->post('/admin/import/preview', ['content' => "Truyện\nCHAPTER 1 - Đầu\nNội dung", 'status' => 'draft', 'duplicates' => 'skip']);
+        $response = $this->post('/admin/import/preview', ['title' => 'Truyện', 'content' => "Truyện\nCHAPTER 1 - Đầu\nNội dung", 'status' => 'draft', 'duplicates' => 'skip']);
         $response->assertOk();
         $this->assertDatabaseCount('series', 0);
         $token = $response->viewData('token');
@@ -212,27 +216,20 @@ class CmsTest extends TestCase
     {
         $this->actingAs($this->admin());
         $menu = Menu::factory()->create(['slug' => 'main']);
-        $site = app(SiteService::class);
-        $this->assertSame([], $site->menus()['main']);
-        $items = [['id' => -1, 'parent_id' => null, 'label' => 'Cha', 'type' => 'url', 'url' => '/'], ['id' => -2, 'parent_id' => -1, 'label' => 'Con', 'type' => 'url', 'url' => '/search']];
-        $this->putJson('/admin/menus/'.$menu->id.'/items', ['items' => $items])->assertOk();
-        $this->assertSame('Con', $site->menus()['main'][0]['children'][0]['label']);
-        $items[0]['parent_id'] = -2;
-        $this->putJson('/admin/menus/'.$menu->id.'/items', ['items' => $items])->assertUnprocessable();
-        $items[0]['url'] = 'javascript:alert(1)';
-        $this->putJson('/admin/menus/'.$menu->id.'/items', ['items' => $items])->assertUnprocessable();
+        $this->assertSame(['Home', 'Stories', 'Liferature', 'Articles'], array_column(app(SiteService::class)->menus()['main'], 'label'));
+        $this->putJson('/admin/menus/'.$menu->id.'/items', ['items' => []])->assertNotFound();
     }
 
     public function test_response_cache_is_shared_and_invalidated_on_update(): void
     {
         config(['responsecache.enabled' => true]);
-        $page = Page::factory()->create(['title' => 'Nội dung cũ']);
-        $guest = $this->get('/pages/'.$page->slug)->assertOk()->getContent();
+        $page = Post::factory()->create(['title' => 'Nội dung cũ']);
+        $guest = $this->get('/articles/'.$page->slug)->assertOk()->getContent();
         $admin = $this->admin();
         $this->actingAs($admin);
-        $this->assertSame($guest, $this->get('/pages/'.$page->slug)->getContent());
-        $this->put('/admin/pages/'.$page->id, ['title' => 'Nội dung mới', 'slug' => $page->slug, 'content' => '<p>Thay đổi</p>', 'status' => 'published'])->assertSessionHasNoErrors();
-        $this->get('/pages/'.$page->slug)->assertSee('Nội dung mới')->assertDontSee('Nội dung cũ');
+        $this->assertSame($guest, $this->get('/articles/'.$page->slug)->getContent());
+        $this->put('/admin/posts/'.$page->id, ['type' => 'normal', 'title' => 'Nội dung mới', 'slug' => $page->slug, 'content' => '<p>Thay đổi</p>', 'status' => 'published'])->assertSessionHasNoErrors();
+        $this->get('/articles/'.$page->fresh()->slug)->assertSee('Nội dung mới')->assertDontSee('Nội dung cũ');
     }
 
     public function test_cloudflare_disabled_and_batches_of_thirty(): void
@@ -266,7 +263,7 @@ class CmsTest extends TestCase
         Series::query()->update(['status' => 'published']);
         Cache::flush();
         DB::enableQueryLog();
-        $this->get('/stories/where-the-wind-tells-stories')->assertOk();
+        $this->get('/stories/where-the-wind-tells-stories')->assertRedirect('/stories/where-the-wind-tells-stories/where-the-wind-tells-stories-chapter-1');
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
         $this->assertLessThan(20, count($queries));

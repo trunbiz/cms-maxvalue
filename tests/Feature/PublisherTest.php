@@ -32,32 +32,26 @@ class PublisherTest extends TestCase
         $this->assertSame(0, Post::published()->count());
         $this->assertDatabaseCount('pages', 6);
         $this->assertSame(0, Page::published()->count());
-        $this->get('/pages/privacy-policy')->assertNotFound();
+        $this->get('/pages/privacy-policy')->assertOk();
         $this->get('/')->assertOk()->assertSee('lang="en"', false)->assertDontSee('[[publisher_name]]');
         $xml = $this->get('/sitemap.xml')->assertOk()->streamedContent();
-        $this->assertStringNotContainsString('privacy-policy', $xml);
+        $this->assertStringContainsString('privacy-policy', $xml);
         $this->assertStringNotContainsString('where-the-wind', $xml);
     }
 
     public function test_profile_and_review_required_then_pages_and_footer_are_published(): void
     {
         $this->actingAs($this->admin());
-        $this->seed(PublicationPagesSeeder::class);
-        $this->post('/admin/settings/publish-pages', ['reviewed' => 1])->assertSessionHasErrors();
-        $this->put('/admin/settings', $this->profile())->assertSessionHasNoErrors();
-        $this->post('/admin/settings/publish-pages', [])->assertSessionHasErrors('reviewed');
-        $this->post('/admin/settings/publish-pages', ['reviewed' => 1])->assertSessionHasNoErrors();
-        $this->assertSame(6, Page::published()->count());
-        $response = $this->get('/pages/privacy-policy')->assertOk()->assertSee('Test Publisher')->assertSee('contact@example.org')->assertDontSee('[[contact_email]]');
-        $this->assertEmpty($response->headers->getCookies());
+        $this->post('/admin/settings/publish-pages', ['reviewed' => 1])->assertNotFound();
+        $this->get('/pages/privacy-policy')->assertOk()->assertDontSee('[[contact_email]]');
         $this->get('/')->assertSee('/pages/privacy-policy', false)->assertSee('/pages/contact', false);
-        $this->assertStringContainsString('/pages/privacy-policy', $this->get('/sitemap.xml')->streamedContent());
     }
 
     public function test_page_cannot_publish_unresolved_identity_placeholders(): void
     {
         $this->actingAs($this->admin());
-        $this->post('/admin/pages', ['title' => 'Privacy', 'status' => 'published', 'content' => '<p>Contact [[contact_email]]</p>'])->assertSessionHasErrors('status');
+        $this->post('/admin/pages', ['title' => 'Privacy', 'status' => 'published'])->assertNotFound();
+        $this->get('/admin/pages/create')->assertNotFound();
         $this->assertDatabaseCount('pages', 0);
     }
 
@@ -65,10 +59,8 @@ class PublisherTest extends TestCase
     {
         $this->actingAs($this->admin());
         $this->get('/ads.txt')->assertNotFound();
-        $this->put('/admin/settings', $this->profile() + ['adsense_publisher_id' => '<script>bad</script>'])->assertSessionHasErrors('adsense_publisher_id');
-        $this->put('/admin/settings', $this->profile() + ['adsense_publisher_id' => 'ca-pub-1234567890123456', 'ads_txt' => 'other.example, 123, DIRECT'])->assertSessionHasNoErrors();
-        $this->get('/')->assertSee('<meta name="google-adsense-account" content="ca-pub-1234567890123456">', false)->assertDontSee('adsbygoogle.js');
-        $this->get('/ads.txt')->assertOk()->assertSee('google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0', false)->assertSee('other.example');
+        $this->put('/admin/settings', ['permalink_structure' => 'name', 'head_html' => '<meta name="custom-verification" content="test">'])->assertSessionHasNoErrors();
+        $this->get('/')->assertSee('<meta name="custom-verification" content="test">', false);
     }
 
     public function test_article_hides_author_and_has_dates_schema_and_authenticated_draft_preview(): void

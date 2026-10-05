@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use App\Models\Category;
-use App\Models\Menu;
-use App\Models\Page;
-use App\Models\Series;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
@@ -13,7 +10,7 @@ class SiteService
 {
     public function settings(): array
     {
-        return Cache::rememberForever('site.settings', fn () => Setting::pluck('value', 'key')->all());
+        return array_merge(Cache::rememberForever('site.settings', fn () => Setting::pluck('value', 'key')->all()), ['site_name' => config('publication.brand'), 'seo_title' => config('publication.title'), 'seo_description' => config('publication.description'), 'logo' => 'images/logo/logo.png', 'favicon' => 'images/logo/logo.ico', 'publisher_name' => config('publication.brand')]);
     }
 
     public function categories()
@@ -23,35 +20,16 @@ class SiteService
 
     public function menus(): array
     {
-        return Cache::rememberForever('site.menus', function () {
-            $menus = Menu::select(['id', 'name', 'slug'])->with('items')->get();
-            $targets = ['page' => Page::select(['id', 'slug'])->published()->pluck('slug', 'id'), 'category' => Category::select(['id', 'slug'])->pluck('slug', 'id'), 'series' => Series::select(['id', 'slug'])->published()->pluck('slug', 'id')];
-            $prefix = ['page' => 'pages', 'category' => 'categories', 'series' => 'stories'];
-            $result = [];
-            foreach ($menus as $menu) {
-                $items = [];
-                foreach ($menu->items as $item) {
-                    $href = $item->type === 'url' ? $item->url : (isset($targets[$item->type][$item->target_id]) ? '/'.$prefix[$item->type].'/'.$targets[$item->type][$item->target_id] : null);
-                    if ($href) {
-                        $items[] = ['id' => $item->id, 'parent_id' => $item->parent_id, 'label' => $item->label, 'href' => $href];
-                    }
-                } $result[$menu->slug] = $this->tree($items);
+        $main = ['Home' => '/', 'Stories' => '/stories', 'Liferature' => '/liferature', 'Articles' => '/articles'];
+        $footer = [];
+        foreach (PublisherService::PAGES as $slug => $title) {
+            if (in_array($slug, ['editorial-policy', 'copyright'], true)) {
+                continue;
             }
-
-            return $result;
-        });
-    }
-
-    private function tree(array $items, ?int $parent = null): array
-    {
-        $tree = [];
-        foreach ($items as $item) {
-            if ($item['parent_id'] === $parent) {
-                $item['children'] = $this->tree($items, $item['id']);
-                $tree[] = $item;
-            }
+            $footer[$title] = '/pages/'.$slug;
         }
-
-        return $tree;
+        $items = fn ($links) => array_map(fn ($label, $href) => ['label' => $label, 'href' => $href, 'children' => []], array_keys($links), array_values($links));
+        return ['main' => $items($main), 'footer' => $items($footer)];
     }
+
 }

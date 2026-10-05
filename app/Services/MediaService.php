@@ -46,6 +46,7 @@ class MediaService
 
     public function url(?string $path): string
     {
+        if (in_array($path, ['images/logo/logo.png', 'images/logo/logo.ico'], true)) return asset($path);
         if (! $path) {
             return asset('images/book-placeholder.svg');
         }

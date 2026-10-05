@@ -1,5 +1,8 @@
 @extends('admin.layout')
 @section('title',__($record->exists?'Edit: ':'New: ').__($definition['label']))
+@section('heading-prefix')
+    @if($resource==='posts')<a class="btn btn-light icon-button admin-heading-back" href="/admin/posts" title="{{ __('Back') }}" aria-label="{{ __('Back') }}">@include('admin.icon', ['name'=>'back'])</a>@endif
+@endsection
 @section('actions')
     <div class="d-flex flex-wrap gap-2">
         @if($record->exists && ($resource==='pages'||($resource==='posts'&&$record->type==='normal')))
@@ -27,6 +30,14 @@
             'Publishing'=>array_intersect_key($definition['fields'],array_flip(['status','published_at'])),
             'Search & link'=>array_intersect_key($definition['fields'],array_flip(['seo_title','seo_keywords','seo_description'])),
         ];
+        if ($isPost) {
+            unset($groups['Content']['excerpt']);
+            $groups['Search & link'] = [];
+            if (!$record->exists) {
+                $groups['Publishing'] = [];
+                unset($groups['Organization']['tags']);
+            }
+        }
     @endphp
     <form method="post" enctype="multipart/form-data"
           action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form"
@@ -38,6 +49,7 @@
             <div class="alert alert-warning">{{ __('Enable JavaScript to use the rich text editor, image previews and chapter analysis.') }}</div>
         </noscript>
         @if($isPost)
+            @if(!$record->exists)<input type="hidden" name="status" value="published">@endif
             <input type="hidden" name="type" value="{{ $isChapter?'chapter':'normal' }}">
             @if($isChapter)
                 <div class="alert alert-light border">Editing chapter {{ $record->chapter_number }} of
@@ -60,30 +72,16 @@
             <div class="publishing-main">
                 @if($isPost && !$record->exists)
                     <section class="editor-section mb-4">
-                        <h2 class="section-title">{{ __('Title & description') }}</h2>
+                        <h2 class="section-title">{{ __('Title & image') }}</h2>
                         <div class="row gx-4">
                             <div class="col-md-6">
                                 @include('admin.fields.input',['field'=>'image','label'=>'Featured image'])
-                                <div class="mt-3 mb-4" data-import-image @if(!$importMode) hidden @endif>
-                            <input type="hidden" name="share_image" value="0">
-                            <label class="form-check"><input class="form-check-input" type="checkbox" name="share_image"
-                                                             value="1" @checked(old('share_image','1')==='1')><span
-                                    class="form-check-label">{{ __('Use this cover for all imported chapters') }}</span></label>
-                            <p class="form-text mb-0">{{ __('If no new image is selected, use the selected story\'s existing cover. The image appears on each chapter page.') }}</p>
-                                </div>
                             </div>
                             <div class="col-md-6" data-title-slug>
                                 @include('admin.fields.input',['field'=>'title','label'=>'Title'])
                                 @include('admin.fields.input',['field'=>'slug','label'=>$definition['fields']['slug']])
                             </div>
                         </div>
-                        <details class="publishing-options" data-description-options @if($errors->has('excerpt') || filled(old('excerpt'))) open @endif>
-                            <summary>{{ __('Description') }} <span class="small fw-normal text-secondary">{{ __('Optional') }}</span></summary>
-                            <div class="pt-3">
-                                @include('admin.fields.input',['field'=>'excerpt','label'=>'Description'])
-                                <p class="form-text mb-0">{{ __('For chapter imports, this describes the Series. Leave it blank to use the manuscript introduction.') }}</p>
-                            </div>
-                        </details>
                     </section>
                 @endif
                 <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
@@ -104,25 +102,13 @@
                 @if($isPost && !$record->exists)
                     <section class="editor-section" data-import-content @if(!$importMode) hidden @endif>
                         <h2 class="section-title">{{ __('Manuscript') }}</h2>
-                        @include('admin.fields.input',['field'=>'series_id','label'=>'Series'])
-                        <label class="form-label" for="manuscript">{{ __('Intro/Description') }}</label>
-                        <p class="import-guidance" id="manuscript-help">{{ __('Mark each chapter with CHAPTER X - Title. Enter a Series title and description above, or put the title on the first line before CHAPTER 1 and its description on the following lines.') }}</p>
+                        <input type="hidden" name="share_image" value="1">
+                        <input type="hidden" name="duplicates" value="skip">
+                        <label class="form-label" for="manuscript">{{ __('Manuscript text') }} <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">{{ __('Required') }}</span></label>
+                        <p class="import-guidance" id="manuscript-help">{{ __('Each manuscript creates a new story. Enter its title above. Mark each chapter with CHAPTER X - Title.') }}</p>
                         <textarea class="form-control" id="manuscript" name="manuscript" rows="18" data-editor
-                                  aria-describedby="manuscript-help">{{ old('manuscript') }}</textarea>
+                                  aria-required="true" aria-describedby="manuscript-help">{{ old('manuscript') }}</textarea>
                         <p class="form-text">{{ __('Images and rich formatting are preserved in the chapter previews.') }}</p>
-                        <details class="import-options mt-4">
-                            <summary>{{ __('Import options') }}</summary>
-                            <div class="pt-3">
-                                <label class="form-label" for="duplicates">{{ __('Existing chapter numbers') }}</label><select
-                                    class="form-select mb-3" id="duplicates" name="duplicates">
-                                    <option value="skip">{{ __('Keep existing chapters (skip duplicates)') }}</option>
-                                    <option value="overwrite">{{ __('Replace existing chapters') }}</option>
-                                </select>
-                                <label class="form-check mb-2"><input class="form-check-input" type="checkbox"
-                                                                      name="update_description" value="1"><span
-                                        class="form-check-label">{{ __('Update the selected story description') }}</span></label>
-                            </div>
-                        </details>
                         <button type="button" class="btn btn-outline-primary mt-4" data-analyze>{{ __('Analyze chapters') }}</button>
                         <div class="mt-3" data-import-message role="status" aria-live="polite"></div>
                     </section>
@@ -178,10 +164,15 @@
                 @endforeach
             </aside>
         </div>
+        <div class="mt-3" data-save-message role="status" aria-live="polite" hidden></div>
         <div class="save-bar"><span class="small text-secondary me-auto"
-                                    data-save-hint>{{ __($record->exists?'Save your changes when ready.':'New content is public by default. Choose Draft to keep it private.') }}</span><a
-                class="btn btn-light" href="/admin/{{ $resource }}">{{ __('Back') }}</a>
-            <button class="btn btn-primary px-4" data-save>{{ __($importMode?'Save chapters':'Save changes') }}</button>
+                                    data-save-hint>{{ __($record->exists?'Save your changes when ready.':'New content is published by default. Use Save draft to keep it private.') }}</span>
+            <button type="submit" class="btn btn-primary px-4 order-2" data-save @if($isPost && !$record->exists) name="status" value="published" data-save-status="published" @endif>{{ __($importMode?'Save chapters':'Save changes') }}</button>
+            @if($isPost && !$record->exists)
+                <button type="submit" class="btn btn-outline-secondary order-1" name="status" value="draft" data-save-draft data-save-status="draft">{{ __('Save draft') }}</button>
+            @else
+                <a class="btn btn-light order-1" href="/admin/{{ $resource }}">{{ __('Back') }}</a>
+            @endif
         </div>
     </form>
     @if($isPost && !$record->exists)

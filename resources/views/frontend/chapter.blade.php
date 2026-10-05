@@ -32,4 +32,10 @@
         <div class="reading-content"
              id="chapter-content">{!! content_html($chapter->content?->content) !!}</div>@include('frontend.chapter-nav')
     </article>@include('frontend.chapter-sticky')
+    @if($related->isNotEmpty())
+        <section class="mt-5 pt-4" aria-labelledby="related-title">
+            <h2 id="related-title" class="h4 mb-4">Related articles</h2>
+            <div class="row g-4">@foreach($related as $post)<div class="col-md-6 col-lg-4">@include('frontend.post-card')</div>@endforeach</div>
+        </section>
+    @endif
 @endsection

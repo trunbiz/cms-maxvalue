@@ -1,32 +1,38 @@
 @extends('admin.layout')
-@section('title',__('Site settings'))
+@section('title', __('Settings'))
 @section('content')
-<form method="post" enctype="multipart/form-data" action="/admin/settings" class="card border-0 shadow-sm p-4">
-    @csrf @method('PUT')
-    <h2 class="h5">{{ __('Publication identity') }}</h2>
-    <p class="text-secondary">{{ __('Use your real details. Policy pages use these values when displayed; no invented publisher or contact information is supplied.') }}</p>
-    <div class="row g-4">
-        @foreach(['site_name'=>'Website name','publisher_name'=>'Publisher / operator name','contact_email'=>'Public contact email','site_url'=>'Public website URL','seo_description'=>'Site description','logo'=>'Logo','favicon'=>'Favicon','head_html'=>'Custom head HTML'] as $key=>$label)
-            @if($key!=='head_html'||auth()->user()->isSuperAdmin())
-                <div class="{{ in_array($key,['seo_description','head_html'])?'col-12':'col-md-6' }}">
-                    <label class="form-label" for="{{ in_array($key,['logo','favicon'])?'field-'.$key:$key }}">{{ __($label) }}</label>
-                    @if(in_array($key,['logo','favicon']))
-                        @include('admin.fields.image',['name'=>$key,'label'=>$label,'path'=>$settings[$key]??null])
-                    @elseif(in_array($key,['seo_description','head_html']))
-                        <textarea class="form-control" id="{{ $key }}" name="{{ $key }}" rows="{{ $key==='head_html'?7:4 }}">{{ old($key,$settings[$key]??'') }}</textarea>
-                    @else
-                        <input class="form-control" id="{{ $key }}" name="{{ $key }}" type="{{ $key==='contact_email'?'email':($key==='site_url'?'url':'text') }}" value="{{ old($key,$settings[$key]??'') }}" @required($key==='site_name')>
-                    @endif
-                    @if($key==='site_url')<small class="text-secondary">{{ __('Your production HTTPS domain, for example https://your-domain.com. Set APP_URL to this domain when deploying.') }}</small>@endif
-                    @if($key==='head_html')<small class="text-secondary">{{ __('Super Admin only. Before adding analytics or ad scripts, update the privacy notice and configure any required consent solution.') }}</small>@endif
-                </div>
-            @endif
-        @endforeach
-        <div class="col-12">
-            <input type="hidden" name="consent_reviewed" value="0">
-            <label class="form-check"><input class="form-check-input" type="checkbox" name="consent_reviewed" value="1" @checked(old('consent_reviewed',$settings['consent_reviewed']??'0')==='1')><span class="form-check-label">{{ __('I have reviewed the consent requirements for my visitors and configured the applicable AdSense Privacy & messaging settings or certified CMP before serving ads.') }}</span></label>
-        </div>
+@php
+    $mode = old('permalink_structure', $settings['permalink_structure'] ?? 'name');
+    if (!in_array($mode, ['plain', 'day', 'month', 'numeric', 'name', 'custom'])) $mode = 'name';
+    $presets = \App\Services\PermalinkService::PRESETS;
+    $custom = (string) old('permalink_custom', ($settings['permalink_custom'] ?? null) ?: $presets['name']);
+    $structure = $mode === 'custom' ? $custom : ($presets[$mode] ?? $presets['name']);
+    $tokens = ['%year%' => now()->format('Y'), '%monthnum%' => now()->format('m'), '%day%' => now()->format('d'), '%post_id%' => '123', '%postname%' => 'sample-post'];
+    $labels = ['plain' => 'Plain', 'day' => 'Day and name', 'month' => 'Month and name', 'numeric' => 'Numeric', 'name' => 'Post name', 'custom' => 'Custom structure'];
+@endphp
+<form method="post" action="/admin/settings" class="admin-settings-form">
+@csrf @method('PUT')
+<section class="editor-section mb-4" data-permalink-settings data-permalink-presets="{{ json_encode($presets) }}" data-permalink-tokens="{{ json_encode($tokens) }}" data-base-url="{{ url('/') }}" data-custom-structure="{{ $custom }}" aria-labelledby="permalink-title">
+    <h2 id="permalink-title" class="section-title">{{ __('Post permalinks') }}</h2>
+    <p class="text-secondary small mb-4">{{ __('Choose how article links appear. The structure and example below update with your selection.') }}</p>
+    <div class="permalink-options">
+@foreach($labels as $value=>$label)
+        <label class="permalink-option">
+            <input class="form-check-input" type="radio" name="permalink_structure" value="{{ $value }}" @checked($mode === $value)>
+            <span><strong>{{ __($label) }}</strong><code>{{ strtr($presets[$value] ?? $custom, $tokens) }}</code></span>
+        </label>
+@endforeach
     </div>
-    <button class="btn btn-primary align-self-start mt-4">{{ __('Save settings') }}</button>
+    <div class="permalink-structure mt-4">
+        <label for="permalink_custom" class="form-label">{{ __('Custom structure') }}</label>
+        <input id="permalink_custom" name="permalink_custom" class="form-control" value="{{ $structure }}" data-permalink-input @disabled($mode !== 'custom') aria-describedby="permalink-help" placeholder="/%year%/%postname%/">
+        <p id="permalink-help" class="form-text">{{ __('Select Custom structure to edit the pattern, or click a token below.') }}</p>
+        <div class="d-flex flex-wrap gap-2" aria-label="{{ __('Available tokens') }}">@foreach(array_keys($tokens) as $token)<button type="button" class="permalink-token" data-permalink-token="{{ $token }}">{{ $token }}</button>@endforeach</div>
+        <div class="permalink-example mt-3"><span>{{ __('Example URL') }}</span><code data-permalink-preview aria-live="polite">{{ url('/').strtr($structure, $tokens) }}</code></div>
+        <p class="form-text mb-0 mt-3">{{ __('Chapter links stay under their story.') }}</p>
+    </div>
+</section>
+<section class="editor-section mb-4"><label class="section-title" for="head_html">{{ __('Custom head HTML') }}</label><textarea class="form-control" id="head_html" name="head_html" rows="7">{{ old('head_html', $settings['head_html'] ?? '') }}</textarea></section>
+<button class="btn btn-primary px-4">{{ __('Save settings') }}</button>
 </form>
 @endsection

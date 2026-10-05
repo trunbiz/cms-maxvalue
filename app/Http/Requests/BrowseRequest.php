@@ -15,7 +15,14 @@ class BrowseRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['status' => 'nullable|in:published,draft,bin', 'category_id' => 'nullable|integer|exists:categories,id', 'created_by' => 'nullable|integer|exists:users,id', 'q' => 'nullable|string|max:150', 'page' => 'nullable|integer|min:1|max:100000', 'series_page' => 'nullable|integer|min:1|max:100000', 'series_id' => 'nullable|integer|min:1'];
+        $rules = ['status' => 'nullable|in:published,draft,bin', 'category_id' => 'nullable|integer|exists:categories,id', 'created_by' => 'nullable|integer|exists:users,id', 'q' => 'nullable|string|max:150', 'page' => 'nullable|integer|min:1|max:100000', 'series_page' => 'nullable|integer|min:1|max:100000', 'series_id' => 'nullable|integer|min:1'];
+        if ($this->route('resource') === 'posts') {
+            $rules['created_from'] = 'nullable|date_format:Y-m-d';
+            $rules['created_until'] = ['nullable', 'date_format:Y-m-d'];
+            if ($this->filled('created_from')) $rules['created_until'][] = 'after_or_equal:created_from';
+        }
+
+        return $rules;
     }
 
     protected function failedValidation(Validator $validator): void

@@ -2,26 +2,28 @@
 <html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
+    <link rel="icon" href="{{ media_url('images/logo/logo.ico') }}">
     <meta name="robots" content="noindex,nofollow">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title','Admin') · Reading Corner</title>@vite(['resources/css/app.css','resources/js/app.js'])
+    <title>@yield('title','Admin') · OnePublish</title>@vite(['resources/css/app.css','resources/js/app.js'])
     <script>window.adminTranslations = @json(app()->getLocale() === 'vi' ? json_decode(file_get_contents(lang_path('vi.json')), true) : []);</script>
 </head>
 <body class="admin-body">
 <div class="admin-shell">
     <aside class="offcanvas-lg offcanvas-start admin-sidebar" tabindex="-1" id="sidebar">
-        <div class="offcanvas-header"><h5>Reading Corner CMS</h5>
+        <div class="offcanvas-header"><h5>OnePublish CMS</h5>
             <button class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebar"
                     aria-label="{{ __('Close') }}"></button>
         </div>
-        <div class="offcanvas-body d-flex flex-column"><a class="admin-brand" href="/admin">Reading
-                Corner<span>{{ __('PUBLISHING WORKSPACE') }}</span></a>
-            <nav class="nav flex-column gap-1 mt-4" aria-label="{{ __('Admin navigation') }}">
+        <div class="offcanvas-body d-flex flex-column"><a class="admin-brand"
+                                                          href="/admin">OnePublish<span>{{ __('PUBLISHING WORKSPACE') }}</span></a>
+            <nav class="nav flex-column admin-navigation" aria-label="{{ __('Admin navigation') }}">
+                @php($navigationIcons = ['posts' => 'chapters', 'series' => 'books', 'categories' => 'folder', 'tags' => 'tag', 'dashboard' => 'dashboard', 'settings' => 'settings', 'users' => 'users', 'roles' => 'shield'])
                 @php($navigationGroups = [
-                    'Publishing' => ['posts' => 'Articles & chapters', 'series' => 'Series', 'pages' => 'Pages'],
+                    'Publishing' => ['posts' => 'Articles & chapters'],
                     'Organization' => ['categories' => 'Categories', 'tags' => 'Tags'],
-                    'Website' => ['dashboard' => 'Dashboard', 'menus' => 'Menus', 'settings' => 'Settings'],
+                    'Website' => ['dashboard' => 'Dashboard', 'settings' => 'Settings'],
                     'Access management' => ['users' => 'Users', 'roles' => 'Roles'],
                 ])
                 @foreach($navigationGroups as $group => $links)
@@ -30,7 +32,8 @@
                             <div class="admin-nav-heading">{{ __($group) }}</div>
                             @if($group === 'Publishing' && auth()->user()->hasModule('posts'))
                                 <a class="nav-link admin-compose-link {{ request()->is('admin/posts/create')?'active':'' }}"
-                                   href="/admin/posts/create">@include('admin.icon',['name'=>'add'])
+                                   href="/admin/posts/create"
+                                   @if(request()->is('admin/posts/create'))aria-current="page"@endif>@include('admin.icon',['name'=>'add'])
                                     <span>{{ __('Publish content') }}</span></a>
                             @endif
                             @foreach($links as $module => $label)
@@ -38,16 +41,23 @@
                                     @php($active = $module === 'dashboard' ? request()->is('admin', 'admin/dashboard') : (request()->is('admin/'.$module, 'admin/'.$module.'/*') && !($module === 'posts' && request()->is('admin/posts/create'))))
                                     <a class="nav-link {{ $active?'active':'' }}"
                                        href="{{ $module === 'dashboard' ? '/admin' : '/admin/'.$module }}"
-                                       @if($active) aria-current="page" @endif>{{ __($label) }}</a>
+                                       @if($active) aria-current="page" @endif>@include('admin.icon', ['name' => $navigationIcons[$module]])
+                                        <span>{{ __($label) }}</span></a>
                                 @endif
                             @endforeach
                         </div>
                     @endif
                 @endforeach
             </nav>
-{{--            <a href="/" class="mt-auto pt-5 text-white-50">{{ __('View website ↗') }}</a>--}}
+            <div class="admin-sidebar-footer"><a href="/">@include('admin.icon', ['name' => 'external'])
+                    <span>{{ __('View website ↗') }}</span></a></div>
         </div>
     </aside>
+    <style>
+        #admin-language{
+            padding: .7rem 1.85rem;
+        }
+    </style>
     <div class="admin-main">
         <header class="admin-topbar">
             <button class="btn btn-outline-secondary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sidebar"
@@ -68,8 +78,8 @@
             </div>
         </header>
         <main class="container-fluid p-3 p-lg-5">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"><h1
-                    class="h3 mb-0">@yield('title','Dashboard')</h1>@yield('actions')</div>@if($errors->any())
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4"><div class="d-flex align-items-center gap-3">@yield('heading-prefix')<h1
+                    class="h3 mb-0">@yield('title','Dashboard')</h1></div>@yield('actions')</div>@if($errors->any())
                 <div class="alert alert-danger" role="alert">
                     <ul class="mb-0">@foreach($errors->all() as $error)
                             <li>{{ $error }}</li>

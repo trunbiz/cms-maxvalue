@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         foreach (['Literature', 'Fantasy', 'Everyday Life'] as $name) {
             Category::create(['name' => $name, 'slug' => Str::slug($name)]);
         }
+        Category::firstOrCreate(['slug' => 'stories'], ['name' => 'Stories']);
         foreach (['Adventure', 'Family', 'Friendship', 'Growing Up', 'Mystery', 'Nature', 'Vietnam', 'Fairy Tales', 'Psychology', 'Discovery'] as $name) {
             Tag::create(['name' => $name, 'slug' => Str::slug($name)]);
         }

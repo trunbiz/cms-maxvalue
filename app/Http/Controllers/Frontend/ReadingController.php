@@ -33,12 +33,12 @@ class ReadingController extends Controller
     {
         $site = app(SiteService::class);
         $settings = $site->settings();
-        $title = $entity?->seo_title ?: ($entity?->title ?? $entity?->name ?? $data['heading'] ?? $settings['site_name'] ?? 'Reading Corner');
+        $title = $entity?->seo_title ?: ($entity?->title ?? $entity?->name ?? $data['heading'] ?? $settings['seo_title'] ?? 'Latest Stories and Reading');
         $social = app(SocialPreviewService::class)->metadata($entity, $settings,
             isset($data['chapter']) ? ($data['series'] ?? null) : null,
             $data['content'] ?? ($data['chapter']->content?->content ?? ''));
-        $description = $social['description'];
-        $canonical = url(request()->path());
+        $description = $entity === null ? config('publication.description') : $social['description'];
+        $canonical = $entity instanceof Post ? post_url($entity) : url(request()->path());
         $pagination = array_filter(['page' => request()->integer('page') > 1 ? request()->integer('page') : null, 'series_page' => request()->integer('series_page') > 1 ? request()->integer('series_page') : null]);
         if ($pagination) {
             $canonical .= '?'.http_build_query($pagination);
@@ -47,7 +47,7 @@ class ReadingController extends Controller
             $canonical = url('/search').'?'.http_build_query(array_filter(['q' => request('q')] + $pagination));
         }
 
-        $noindex = ($data['isPreview'] ?? false) || request()->is('search') || ! app(PublisherService::class)->publicUrl(config('app.url'));
+        $noindex = ($data['isPreview'] ?? false) || $view === 'not-found' || request()->is('search') || ! app(PublisherService::class)->publicUrl(config('app.url'));
         if ($view === 'home' && $data['posts']->isEmpty() && $data['series']->isEmpty()) {
             $noindex = true;
         }
@@ -55,13 +55,14 @@ class ReadingController extends Controller
             $noindex = true;
         }
 
-        return view('frontend.'.$view, $data + ['settings' => $settings, 'menus' => $site->menus(), 'categories' => $site->categories(), 'seo' => ['title' => $title, 'description' => mb_substr(strip_tags($description), 0, 200), 'canonical' => $canonical, 'image' => $social['image'], 'image_alt' => $social['image_alt'], 'image_type' => $social['image_type'], 'default_image' => $social['default_image'], 'keywords' => $entity?->seo_keywords, 'robots' => $noindex ? 'noindex,follow' : 'index,follow']]);
+        return view('frontend.'.$view, $data + ['settings' => $settings, 'menus' => $site->menus(), 'categories' => $site->categories(), 'seo' => ['title' => $title, 'description' => strip_tags($description), 'canonical' => $canonical, 'image' => $social['image'], 'image_alt' => $social['image_alt'], 'image_type' => $social['image_type'], 'default_image' => $social['default_image'], 'keywords' => $entity?->seo_keywords, 'robots' => $noindex ? 'noindex,follow' : 'index,follow']]);
     }
 
     public function home()
     {
+        if (request()->has('p')) return $this->permalink();
         $series = $this->seriesQuery()->latest('updated_at')->limit(8)->get();
-        $posts = $this->posts()->where('type', 'normal')->latest('published_at')->limit(6)->get();
+        $posts = $this->posts()->where('type', 'chapter')->latest('published_at')->orderByDesc('id')->limit(6)->get();
         $categorySeries = $this->seriesQuery()->latest('updated_at')->limit(60)->get()->groupBy('category_id');
 
         return $this->pageView('home', compact('series', 'posts', 'categorySeries'));
@@ -69,9 +70,8 @@ class ReadingController extends Controller
 
     public function page(string $slug)
     {
-        $page = Page::select(['id', 'title', 'slug', 'content', 'seo_title', 'seo_description', 'updated_at'])->published()->where('slug', $slug)->firstOrFail();
-
-        return $this->pageView('article', ['article' => $page, 'content' => app(PublisherService::class)->renderPage($page->content, app(SiteService::class)->settings())], $page);
+        abort_unless(isset(PublisherService::PAGES[$slug]), 404);
+        return $this->pageView('pages.'.$slug, ['heading' => PublisherService::PAGES[$slug]]);
     }
 
     public function category(BrowseRequest $request, string $slug)
@@ -102,10 +102,11 @@ class ReadingController extends Controller
         foreach ([$posts, $series] as $query) {
             if ($q === '') {
                 $query->whereRaw('1=0');
-            } elseif (config('database.default') === 'mysql') {
-                $query->whereFullText('title', $q);
             } else {
-                $query->where('title', 'like', '%'.$q.'%');
+                foreach (preg_split('/\s+/u', $q, -1, PREG_SPLIT_NO_EMPTY) as $word) {
+                    $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $word).'%';
+                    $query->whereRaw("LOWER(title) LIKE ? ESCAPE '!'", [mb_strtolower($pattern)]);
+                }
             }
         }
 
@@ -114,12 +115,10 @@ class ReadingController extends Controller
 
     public function series(BrowseRequest $request, string $slug)
     {
-        $series = $this->seriesQuery()->with('tags')->where('slug', $slug)->firstOrFail();
-        $chapters = $this->posts()->where('series_id', $series->id)->orderBy('chapter_number')->paginate(50)->withQueryString();
-        $first = $this->posts()->where('series_id', $series->id)->orderBy('chapter_number')->first();
-        $schema = ['@context' => 'https://schema.org', '@type' => 'Book', 'name' => $series->title, 'description' => $series->description, 'url' => url('/stories/'.$series->slug), 'inLanguage' => 'en', 'image' => media_url($series->image)];
+        $series = Series::select(['id', 'slug'])->published()->where('slug', $slug)->firstOrFail();
+        $first = $this->posts()->where('series_id', $series->id)->where('type', 'chapter')->orderBy('chapter_number')->firstOrFail();
 
-        return $this->pageView('series', compact('series', 'chapters', 'first', 'schema'), $series);
+        return redirect(post_url($first));
     }
 
     public function chapter(string $slug, string $chapterSlug)
@@ -132,14 +131,35 @@ class ReadingController extends Controller
             ->published()->where('series_id', $series->id)->where('type', 'chapter')
             ->orderBy('chapter_number')->get();
         $schema = ['@context' => 'https://schema.org', '@type' => 'Chapter', 'name' => $chapter->title, 'position' => $chapter->chapter_number, 'isPartOf' => ['@type' => 'Book', 'name' => $series->title, 'url' => url('/stories/'.$series->slug)], 'url' => post_url($chapter), 'inLanguage' => 'en'];
+        $related = app(\App\Services\ArticleRecommendationService::class)->related($chapter);
 
-        return $this->pageView('chapter', compact('series', 'chapter', 'previous', 'next', 'chapterLinks', 'schema'), $chapter);
+        return $this->pageView('chapter', compact('series', 'chapter', 'previous', 'next', 'chapterLinks', 'schema', 'related'), $chapter);
     }
 
     public function post(string $slug)
     {
         $article = $this->posts()->with('content', 'tags')->where('type', 'normal')->where('slug', $slug)->firstOrFail();
 
+        return $this->articleView($article);
+    }
+
+    public function stories(BrowseRequest $request)
+    {
+        return $this->pageView('listing', ['heading' => 'Stories', 'series' => $this->seriesQuery()->latest('updated_at')->paginate(12), 'posts' => $this->posts()->whereRaw('1=0')->paginate(12)]);
+    }
+
+    public function literature(BrowseRequest $request)
+    {
+        return $this->pageView('listing', ['heading' => 'Liferature', 'posts' => $this->posts()->where('type', 'normal')->whereHas('categories', fn ($q) => $q->whereIn('slug', ['liferature', 'literature']))->latest('published_at')->paginate(12)]);
+    }
+
+    public function permalink(?string $path = null)
+    {
+        $service = app(\App\Services\PermalinkService::class);
+        $id = $path === null ? request()->query('p') : $service->match($path);
+        abort_unless($id, 404);
+        $article = $this->posts()->with('content', 'tags')->where('type', 'normal')->findOrFail($id);
+        abort_unless($path === null ? $service->path($article) === '/?p='.$article->id : trim($service->path($article), '/') === trim($path, '/'), 404);
         return $this->articleView($article);
     }
 
@@ -154,16 +174,24 @@ class ReadingController extends Controller
         $wordCount = preg_match_all('/[\p{L}\p{N}]+/u', strip_tags($content));
         $readingMinutes = max(1, (int) ceil($wordCount / 220));
         $settings = app(SiteService::class)->settings();
-        $schema = ['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $article->title, 'description' => $article->seo_description ?: $article->excerpt, 'inLanguage' => 'en', 'mainEntityOfPage' => url('/articles/'.$article->slug), 'publisher' => ['@type' => 'Organization', 'name' => $settings['site_name'] ?? 'Reading Corner', 'url' => url('/')], 'dateModified' => $article->updated_at?->toIso8601String()];
+        $schema = ['@context' => 'https://schema.org', '@type' => 'Article', 'headline' => $article->title, 'description' => $article->seo_description ?: $article->excerpt, 'inLanguage' => 'en', 'mainEntityOfPage' => post_url($article), 'publisher' => ['@type' => 'Organization', 'name' => $settings['site_name'] ?? 'OnePublish', 'url' => url('/')], 'dateModified' => $article->updated_at?->toIso8601String()];
         if ($article->published_at) {
             $schema['datePublished'] = $article->published_at->toIso8601String();
         }
         if ($article->image) {
             $schema['image'] = media_url($article->image);
         }
-        $related = $this->posts()->where('type', 'normal')->where('id', '!=', $article->id)->where('category_id', $article->category_id)->latest('published_at')->limit(3)->get();
+        $related = app(\App\Services\ArticleRecommendationService::class)->related($article);
+        $activeMenu = '/articles';
 
-        return $this->pageView('article', compact('article', 'content', 'readingMinutes', 'schema', 'related', 'isPreview'), $article);
+        return $this->pageView('article', compact('article', 'content', 'readingMinutes', 'schema', 'related', 'isPreview', 'activeMenu'), $article);
+    }
+
+    public function notFound()
+    {
+        $posts = app(\App\Services\ArticleRecommendationService::class)->suggestions();
+        return response($this->pageView('not-found', ['heading' => 'Content not found', 'posts' => $posts]), 404)
+            ->header('X-Robots-Tag', 'noindex, follow');
     }
 
     public function preview(int $id)
@@ -203,7 +231,8 @@ class ReadingController extends Controller
             $emit = fn ($url) => print '<url><loc>'.htmlspecialchars($url, ENT_XML1 | ENT_QUOTES, 'UTF-8').'</loc></url>';
             $emit(url('/'));
             $emit(url('/articles'));
-            foreach ([Category::class => 'categories', Page::class => 'pages', Tag::class => 'tags', Series::class => 'stories'] as $class => $prefix) {
+            foreach (array_keys(PublisherService::PAGES) as $slug) $emit(url('/pages/'.$slug));
+            foreach ([Category::class => 'categories', Tag::class => 'tags', Series::class => 'stories'] as $class => $prefix) {
                 $q = $class::select(['id', 'slug']);
                 if ($class === Series::class || $class === Page::class) {
                     $q->published();
@@ -212,7 +241,7 @@ class ReadingController extends Controller
                     $emit(url('/'.$prefix.'/'.$row->slug));
                 }
             }
-            foreach (Post::select(['id', 'slug', 'type', 'series_id'])->published()->with('series')->lazyById(500) as $post) {
+            foreach (Post::select(['id', 'slug', 'type', 'series_id', 'published_at', 'created_at'])->published()->with('series')->lazyById(500) as $post) {
                 $emit(post_url($post));
             }
             echo '</urlset>';

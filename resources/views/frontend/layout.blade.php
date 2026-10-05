@@ -35,7 +35,7 @@
 </head>
 <body class="reader-body">
 <a class="skip-link" href="#main-content">Skip to content</a>
-<div id="reading-progress" aria-hidden="true"></div>
+
 <header class="site-header">
     <div class="container d-flex align-items-center flex-wrap gap-4 py-4">
         <a class="brand me-auto" href="/">
@@ -48,9 +48,9 @@
 </header>
 <main id="main-content" class="container py-4 py-lg-5">@yield('content')</main>
 <footer class="site-footer">
-    <div class="container d-flex flex-wrap gap-4 justify-content-between py-5">
-        <div><a class="brand" href="/">{{ $settings['site_name']??'Reading Corner' }}</a><p class="small mt-3">A quiet moment. A good story. A fresh perspective.</p><p class="small mb-0">&copy; {{ date('Y') }} {{ ($settings['publisher_name']??null)?:($settings['site_name']??'Reading Corner') }}</p></div>
-        <nav aria-label="Footer navigation"><ul class="nav gap-2 footer-links">@include('frontend.menu',['items'=>$menus['footer']??[]])</ul></nav>
+    <div class="container footer-inner">
+        <nav aria-label="Footer navigation"><ul class="nav footer-links">@include('frontend.menu',['items'=>$menus['footer']??[]])</ul></nav>
+        <p class="footer-copyright">Copyright {{ date('Y') }} &copy; All rights reserved.</p>
     </div>
 </footer>
 </body>

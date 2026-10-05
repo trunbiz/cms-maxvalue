@@ -1,5 +1,16 @@
 const t = text => window.adminTranslations?.[text] || text;
 import { parseChapters, chapterPreview } from './chapter-parser.js';
+function waitForUploads(form) {
+    return new Promise(resolve => {
+        const observer = new MutationObserver(check);
+        function check() {
+            if (form.querySelector('[data-upload-failed="true"]')) { observer.disconnect(); resolve(false); }
+            else if (!form.querySelector('[data-upload-pending="true"]')) { observer.disconnect(); resolve(true); }
+        }
+        observer.observe(form, { subtree: true, attributes: true, attributeFilter: ['data-upload-pending', 'data-upload-failed'] });
+        check();
+    });
+}
 export function initPublishing() {
     document.querySelectorAll('.publishing-form').forEach(form => {
         const title = form.querySelector('[name="title"], [name="name"]');
@@ -19,7 +30,34 @@ export function initPublishing() {
             slug.addEventListener('input', () => { automatic = !slug.value.trim(); updateSlug(); });
             updateSlug();
         }
-        form.addEventListener('submit', event => { if (form.querySelector('[data-upload-pending="true"]')) event.preventDefault(); });
+        let queued = false;
+        const showSaveMessage = (text, failed = false) => {
+            const message = form.querySelector('[data-save-message]');
+            if (message) { message.hidden = false; message.className = `alert alert-${failed ? 'danger' : 'info'} mt-3`; message.textContent = t(text); }
+        };
+        form.addEventListener('submit', async event => {
+            if (queued) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+            const submitter = event.submitter;
+            const status = form.querySelector('[name="status"]');
+            if (submitter?.dataset.saveStatus && status) status.value = submitter.dataset.saveStatus;
+            if (form.querySelector('[data-upload-failed="true"]')) {
+                event.preventDefault(); event.stopImmediatePropagation();
+                showSaveMessage('Image upload failed. Please select the image again before saving.', true);
+                return;
+            }
+            if (!form.querySelector('[data-upload-pending="true"]')) return;
+            event.preventDefault(); event.stopImmediatePropagation(); queued = true;
+            const buttons = [...form.querySelectorAll('[data-save], [data-save-draft]')];
+            buttons.forEach(button => { button.disabled = true; });
+            form.setAttribute('aria-busy', 'true');
+            showSaveMessage('Uploading images. Your content will be saved automatically when the uploads finish.');
+            const uploaded = await waitForUploads(form);
+            queued = false; buttons.forEach(button => { button.disabled = false; }); form.removeAttribute('aria-busy');
+            if (!uploaded) { showSaveMessage('Image upload failed. Please select the image again before saving.', true); return; }
+            const message = form.querySelector('[data-save-message]'); if (message) message.hidden = true;
+            // Preserve the selected publish/draft action when resuming the form.
+            if (submitter) form.requestSubmit(submitter); else form.requestSubmit();
+        }, true);
         form.addEventListener('invalid', event => {
             let section = event.target.closest('details');
             while (section) { section.open = true; section = section.parentElement.closest('details'); }
@@ -43,6 +81,9 @@ export function initPublishing() {
             picker.querySelector('[data-choice-summary]').textContent = `${picker.querySelectorAll('input:checked').length} ${t('selected')}`;
         };
         search.addEventListener('input', refresh);
+        search.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); event.stopPropagation(); }
+        });
         picker.addEventListener('change', refresh);
         const input = picker.querySelector('[data-new-tag]');
         const addTag = () => {
@@ -60,7 +101,7 @@ export function initPublishing() {
             input.value = ''; search.value = ''; checkbox.dispatchEvent(new Event('change', { bubbles: true })); refresh();
         };
         picker.querySelector('[data-add-tag]')?.addEventListener('click', addTag);
-        input?.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addTag(); } });
+        input?.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); event.stopPropagation(); addTag(); } });
         refresh();
     });
 
@@ -73,10 +114,11 @@ export function initPublishing() {
         let objectUrl, uploadRevision = 0;
         input.addEventListener('change', async () => {
             const currentUpload = ++uploadRevision;
+            delete picker.dataset.uploadFailed;
             if (objectUrl) URL.revokeObjectURL(objectUrl);
             let file = input.files[0]; error.hidden = true;
             if (file && (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
-                error.textContent = t('Choose a JPG, PNG, WebP or GIF image up to 5 MB.'); error.hidden = false; input.value = ''; file = null;
+                error.textContent = t('Choose a JPG, PNG, WebP or GIF image up to 5 MB.'); error.hidden = false; input.value = ''; file = null; picker.dataset.uploadFailed = 'true';
             }
             const src = file ? (objectUrl = URL.createObjectURL(file)) : image.dataset.currentSrc;
             if (src) image.src = src; else image.removeAttribute('src');
@@ -91,16 +133,16 @@ export function initPublishing() {
                 const data = new FormData(); data.append('upload', file);
                 const response = await fetch('/admin/upload/featured', { method: 'POST', body: data, headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } });
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.message || t('Image upload failed.'));
+                if (!response.ok || !result.path || !result.url) throw new Error(result.message || t('Image upload failed.'));
                 if (currentUpload !== uploadRevision) return;
                 path.value = result.path; image.src = result.url; input.value = '';
                 picker.querySelector('[data-image-caption]').textContent = t('Uploaded');
             } catch (failure) {
                 if (currentUpload !== uploadRevision) return;
                 error.textContent = failure.message; error.hidden = false;
-                picker.dataset.uploadPending = 'true'; return;
+                picker.dataset.uploadFailed = 'true'; return;
             } finally {
-                if (currentUpload === uploadRevision && path.value) delete picker.dataset.uploadPending;
+                if (currentUpload === uploadRevision) delete picker.dataset.uploadPending;
             }
         });
         reset.addEventListener('click', () => { input.value = ''; input.dispatchEvent(new Event('change', { bubbles: true })); });
@@ -137,7 +179,10 @@ export function initPublishing() {
             section.querySelectorAll('input,textarea,select').forEach(input => { input.disabled = hidden; });
         });
         save.textContent = importing ? t('Save chapters') : t('Save changes');
-        hint.textContent = importing ? t('Save chapters directly or preview with Analyze chapters. Choose Published to publish them.') : t('New content is public by default. Choose Draft to keep it private.');
+        form.querySelectorAll('[data-standard-required]').forEach(marker => { marker.hidden = false; });
+        const titleInput = form.querySelector('[name="title"]');
+        if (titleInput) { titleInput.required = true; titleInput.setAttribute('aria-required', 'true'); }
+        hint.textContent = t('New content is published by default. Use Save draft to keep it private.');
         invalidate();
     };
     form.querySelectorAll('[name="compose_mode"]').forEach(input => input.addEventListener('change', toggle));
@@ -199,6 +244,7 @@ export function initPublishing() {
     };
     analyze.addEventListener('click', () => analyzeChapters());
     form.addEventListener('submit', async event => {
+        if (event.defaultPrevented) return;
         if (pendingUpload()) { event.preventDefault(); return; }
         if (!importMode()) return;
         event.preventDefault();
@@ -214,7 +260,9 @@ export function initPublishing() {
             if (value instanceof File) continue;
             const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; confirmation.append(input);
         }
-        saving = true; save.disabled = true; save.textContent = t('Saving...'); confirmation.requestSubmit();
+        saving = true; save.disabled = true;
+        const draft = form.querySelector('[data-save-draft]'); if (draft) draft.disabled = true;
+        save.textContent = t('Saving...'); confirmation.requestSubmit();
     });
     toggle();
 }

@@ -100,6 +100,10 @@ HTML],
             if ($page->content === '') {
                 $page->update(['content' => $content, 'seo_title' => $title, 'seo_description' => $description, 'status' => 'draft']);
             }
+            if (in_array($slug, ['editorial-policy', 'copyright'], true)) {
+                $footer->items()->where('type', 'page')->where('target_id', $page->id)->delete();
+                continue;
+            }
             if (! $footer->items()->where('type', 'page')->where('target_id', $page->id)->exists()) {
                 $footer->items()->create(['label' => $title, 'type' => 'page', 'target_id' => $page->id, 'sort_order' => count($pages) + $page->id]);
             }

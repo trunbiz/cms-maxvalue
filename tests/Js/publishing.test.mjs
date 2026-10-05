@@ -17,6 +17,111 @@ const change = element => element.dispatchEvent(new Event('change', { bubbles: t
 const input = element => element.dispatchEvent(new Event('input', { bubbles: true }));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+test('Enter in category and tag searches does not submit or analyze the manuscript', () => {
+    const dom = setup(`<form class="publishing-form"><button data-analyze type="button">Analyze</button>
+        <div data-choice-picker><input data-choice-search><div data-choice-summary></div><div data-choice-list></div><div data-choice-empty></div></div>
+        <div data-choice-picker><input data-choice-search><div data-choice-summary></div><div data-choice-list></div><div data-choice-empty></div><input data-new-tag><button type="button" data-add-tag>Add</button></div></form>`);
+    try {
+        initPublishing();
+        let submissions = 0, analyses = 0;
+        document.querySelector('form').addEventListener('submit', () => submissions++);
+        document.querySelector('[data-analyze]').addEventListener('click', () => analyses++);
+        document.querySelectorAll('[data-choice-search]').forEach(search => {
+            const event = new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+            search.dispatchEvent(event); assert.equal(event.defaultPrevented, true);
+        });
+        const input = document.querySelector('[data-new-tag]'); input.value = 'New topic';
+        const event = new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        input.dispatchEvent(event);
+        assert.equal(event.defaultPrevented, true);
+        assert.equal(document.querySelector('[value="new:New topic"]').checked, true);
+        assert.equal(submissions, 0); assert.equal(analyses, 0);
+    } finally { dom.window.close(); }
+});
+
+function queuedComposer() {
+    return `<form class="publishing-form" data-composer>
+        <input type="radio" name="compose_mode" value="import" checked><input name="title">
+        <input type="hidden" name="status" value="published">
+        <section data-standard-content><textarea name="content"></textarea></section>
+        <section data-import-content><textarea name="manuscript" data-upload-pending="true">CHAPTER 1 - First\nChapter body</textarea><button type="button" data-analyze>Analyze</button><div data-import-message></div></section>
+        <div data-upload-pending="true" data-featured-pending><input name="image_path"></div>
+        <section data-chapter-preview hidden></section><span data-save-hint></span><div data-save-message hidden></div>
+        <button type="submit" data-save data-save-status="published">Save chapters</button><button type="submit" data-save-draft data-save-status="draft">Save draft</button>
+    </form><form data-import-confirm></form>`;
+}
+
+test('saving chapters waits for featured and editor images then submits the chosen publish or draft action once', async () => {
+    for (const status of ['published', 'draft']) {
+        const dom = setup(queuedComposer());
+        try {
+            initPublishing();
+            const form = document.querySelector('[data-composer]');
+            const submitter = form.querySelector(`[data-save-status="${status}"]`);
+            const confirmation = document.querySelector('[data-import-confirm]');
+            let submissions = 0;
+            confirmation.requestSubmit = () => { submissions++; };
+            form.requestSubmit = button => form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+            form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter }));
+            assert.equal(form.querySelector('[data-save]').disabled, true);
+            assert.equal(form.querySelector('[data-save-message]').hidden, false);
+            form.querySelector('[data-featured-pending] [name="image_path"]').value = 'imports/cover.webp';
+            delete form.querySelector('[data-featured-pending]').dataset.uploadPending;
+            await tick(); assert.equal(submissions, 0, 'editor image is still uploading');
+            const manuscript = form.querySelector('[name="manuscript"]');
+            manuscript.value = 'CHAPTER 1 - First\nChapter body with an uploaded image';
+            manuscript.dataset.uploadPending = 'false';
+            await tick();
+            assert.equal(submissions, 1);
+            assert.equal(confirmation.elements.status.value, status);
+            assert.equal(confirmation.elements.image_path.value, 'imports/cover.webp');
+            assert.equal(confirmation.elements.content.value, manuscript.value);
+        } finally { dom.window.close(); }
+    }
+});
+
+test('failed image uploads cancel automatic saving and let the user retry', async () => {
+    const dom = setup(queuedComposer());
+    try {
+        initPublishing();
+        const form = document.querySelector('[data-composer]');
+        const button = form.querySelector('[data-save]');
+        let submissions = 0; document.querySelector('[data-import-confirm]').requestSubmit = () => submissions++;
+        form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+        const image = form.querySelector('[data-featured-pending]'); image.dataset.uploadFailed = 'true'; delete image.dataset.uploadPending;
+        await tick();
+        assert.equal(submissions, 0); assert.equal(button.disabled, false);
+        assert.match(form.querySelector('[data-save-message]').textContent, /Image upload failed/);
+        assert.equal(form.hasAttribute('aria-busy'), false);
+    } finally { dom.window.close(); }
+});
+
+test('featured image upload resolves the queued save with its returned media path', async () => {
+    const dom = setup(`<meta name="csrf-token" content="test"><form class="publishing-form">
+        <div data-image-picker data-immediate-upload><input type="file" data-image-input><input name="image_path">
+        <div data-image-preview hidden><img data-image-thumbnail data-current-src=""><span data-image-caption></span><button type="button" data-image-reset hidden>Undo</button></div><p data-image-error hidden></p></div>
+        <div data-save-message hidden></div><button type="submit" data-save>Save</button></form>`);
+    const originalFetch = globalThis.fetch, originalCreate = URL.createObjectURL, originalRevoke = URL.revokeObjectURL;
+    try {
+        let finishUpload;
+        globalThis.fetch = () => new Promise(resolve => { finishUpload = resolve; });
+        URL.createObjectURL = () => 'blob:cover'; URL.revokeObjectURL = () => {};
+        initPublishing();
+        const form = document.querySelector('form'), file = form.querySelector('[data-image-input]');
+        Object.defineProperty(file, 'files', { value: [new File(['image'], 'cover.png', { type: 'image/png' })], configurable: true });
+        change(file);
+        assert.equal(form.querySelector('[data-image-picker]').dataset.uploadPending, 'true');
+        let submissions = 0;
+        form.requestSubmit = () => { submissions++; assert.equal(form.elements.image_path.value, 'posts/cover.webp'); };
+        form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: form.querySelector('[data-save]') }));
+        assert.equal(submissions, 0);
+        finishUpload({ ok: true, json: async () => ({ path: 'posts/cover.webp', url: '/storage/posts/cover.webp' }) });
+        await tick();
+        assert.equal(submissions, 1);
+        assert.equal(form.querySelector('[data-image-thumbnail]').getAttribute('src'), '/storage/posts/cover.webp');
+    } finally { globalThis.fetch = originalFetch; URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; dom.window.close(); }
+});
+
 test('new post slugs follow Vietnamese titles and respect manual overrides', () => {
     const dom = setup('<form class="publishing-form" data-auto-slug><input name="title"><details><summary>Slug</summary><input name="slug"></details></form>');
     try {

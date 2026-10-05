@@ -1,9 +1,17 @@
 @php($value=old($field,$field==='content' && $resource==='posts' ? $record->content?->content : $record->getAttribute($field)))
+@php($requiredField = $resource === 'posts' && in_array($field, ['title', 'content']))
 <div class="mb-4" data-field="{{ $field }}">
     @if(in_array($field,['tags','category_id','modules']))
         <div class="form-label">{{ __($label) }}</div>
     @else
-        <label class="form-label" for="field-{{ $field }}">{{ __($label) }}</label>
+        <label class="form-label" for="field-{{ $field }}">
+            {{ __($label) }}
+            @if($requiredField)
+                <span @if($field==='title' && !$record->exists) data-standard-required @endif>
+                    <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">{{ __('Required') }}</span>
+                </span>
+            @endif
+        </label>
     @endif
     @if($field==='modules')
         <div class="row g-2">@foreach(config('modules') as $key=>$module)
@@ -18,6 +26,7 @@
     @elseif($field==='category_id')
         <input type="hidden" name="category_selection" value="1">
         @include('admin.fields.choices',['name'=>'category_ids','label'=>'Categories','options'=>$categories,'selected'=>old('category_ids',old('category_selection')?[]:($record->exists?($record->categories->pluck('id')->all()?:array_filter([$record->category_id])):[]))])
+        @if($resource==='posts' && !$record->exists)<p class="form-text mb-0">{{ __('If no category is selected, Stories is used.') }}</p>@endif
     @elseif(in_array($field,['role_id','series_id']))
         <select class="form-select" name="{{ $field }}" id="field-{{ $field }}">
             <option
@@ -36,7 +45,7 @@
         @include('admin.fields.image',['name'=>'image','label'=>$label,'path'=>$record->image])
     @elseif(in_array($field,['content','description','excerpt','seo_description']))
         <textarea class="form-control" id="field-{{ $field }}" name="{{ $field }}" rows="{{ $field==='content'?16:4 }}"
-                  @if($field==='content') data-editor @endif>{{ $field==='content'?content_html($value):$value }}</textarea>
+                  @if($field==='content') data-editor @endif @if($requiredField)aria-required="true"@endif>{{ $field==='content'?content_html($value):$value }}</textarea>
         @if($field==='content')
             <p class="form-text mb-0">{{ __('Format text with the toolbar. Upload an image from your device, paste a copied image, or drag it into the editor.') }}</p>
         @endif
@@ -44,7 +53,7 @@
         <input class="form-control" id="field-{{ $field }}" name="{{ $field }}"
                type="{{ $field==='password'?'password':($field==='published_at'?'datetime-local':'text') }}"
                value="{{ $field==='password'?'':($field==='published_at' && $value instanceof \Carbon\Carbon?$value->format('Y-m-d\TH:i'):$value) }}"
-               @if($field==='password') autocomplete="new-password" @endif>
+               @if($field==='password') autocomplete="new-password" @endif @if($requiredField) required aria-required="true" @endif>
         @if($field==='password' && $record->exists)
             <small class="text-secondary">{{ __('Leave blank to keep the current password.') }}</small>
         @endif

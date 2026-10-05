@@ -17,6 +17,9 @@ class ResourceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if ($this->route('resource') === 'posts' && !$this->route('id') && !$this->has('status')) {
+            $this->merge(['status' => 'published']);
+        }
         if (in_array($this->route('resource'), ['posts', 'series']) && ($this->has('category_selection') || $this->has('category_ids'))) {
             $ids = $this->input('category_ids', []);
             $this->merge(['category_ids' => $ids, 'category_id' => is_array($ids) ? ($ids[0] ?? null) : null]);

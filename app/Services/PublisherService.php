@@ -12,8 +12,9 @@ class PublisherService
         'contact' => 'Contact',
         'privacy-policy' => 'Privacy Policy',
         'terms-of-use' => 'Terms of Use',
-        'editorial-policy' => 'Editorial Policy',
-        'copyright' => 'Copyright & Corrections',
+        'dmca' => 'DMCA',
+//        'editorial-policy' => 'Editorial Policy',
+//        'copyright' => 'Copyright & Corrections',
     ];
 
     public function renderPage(string $html, array $settings): string

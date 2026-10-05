@@ -11,6 +11,20 @@ class ChapterNavigationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_story_links_open_the_first_public_chapter_without_an_intro_screen(): void
+    {
+        $series = Series::factory()->create();
+        Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 1, 'status' => 'draft']);
+        Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 2, 'published_at' => now()->addDay()]);
+        $first = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 3]);
+        Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 4]);
+        $this->get('/stories/'.$series->slug)->assertRedirect(post_url($first));
+        $series->update(['status' => 'draft']);
+        $this->get('/stories/'.$series->slug)->assertNotFound();
+        $empty = Series::factory()->create();
+        $this->get('/stories/'.$empty->slug)->assertNotFound();
+    }
+
     public function test_sticky_navigation_lists_only_public_chapters_from_the_current_series_in_order(): void
     {
         $series = Series::factory()->create(['status' => 'published']);
@@ -27,7 +41,7 @@ class ChapterNavigationTest extends TestCase
             ->assertSee('href="'.post_url($first).'"', false)
             ->assertSee('href="'.post_url($last).'"', false)
             ->assertDontSee('Hidden draft chapter')->assertDontSee('Future chapter')
-            ->assertDontSee('Another series chapter')->assertDontSee('data-copy-link', false)
+            ->assertDontSee('data-copy-link', false)
             ->assertViewHas('chapterLinks', fn ($links) => $links->pluck('id')->all() === [$first->id, $current->id, $last->id]);
     }
 

@@ -14,6 +14,40 @@ class AdminUpdatesTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_posts_date_filters_include_boundary_days_and_keep_ownership_scope(): void
+    {
+        $staff = $this->staff();
+        $first = Post::factory()->create(['created_by' => $staff->id, 'created_at' => '2026-09-15 00:00:00']);
+        $last = Post::factory()->create(['created_by' => $staff->id, 'created_at' => '2026-09-16 23:59:59']);
+        $before = Post::factory()->create(['created_by' => $staff->id, 'created_at' => '2026-09-14 23:59:59']);
+        $after = Post::factory()->create(['created_by' => $staff->id, 'created_at' => '2026-09-17 00:00:00']);
+        $other = Post::factory()->create(['created_by' => $this->staff()->id, 'created_at' => '2026-09-15 12:00:00']);
+        $this->actingAs($staff)->get('/admin/posts?created_from=2026-09-15&created_until=2026-09-16')->assertOk()
+            ->assertSee('Add new')->assertSee('name="created_from"', false)->assertSee('name="created_until"', false)
+            ->assertSee($first->title)->assertSee($last->title)->assertDontSee($before->title)->assertDontSee($after->title)->assertDontSee($other->title)
+            ->assertViewHas('records', fn ($records) => $records->total() === 2 && str_contains($records->url(2), 'created_from=2026-09-15') && str_contains($records->url(2), 'created_until=2026-09-16'));
+        $this->get('/admin/posts?created_from=2026-09-17')->assertOk()->assertSee($after->title)->assertDontSee($last->title);
+        $this->get('/admin/posts?created_until=2026-09-14')->assertOk()->assertSee($before->title)->assertDontSee($first->title);
+        $this->get('/admin/posts?created_from=bad-date')->assertUnprocessable();
+        $this->get('/admin/posts?created_from=2026-09-17&created_until=2026-09-15')->assertUnprocessable();
+    }
+
+    public function test_posts_list_displays_creation_time_and_eager_loaded_creator(): void
+    {
+        $staff = $this->staff();
+        $post = Post::factory()->create(['created_by' => $staff->id, 'created_at' => '2026-09-15 09:35:00']);
+        $response = $this->actingAs($staff)->get('/admin/posts');
+        $response->assertOk()->assertSee('admin-posts-table', false)->assertSee('post-selection-target', false)
+            ->assertSee('15/09/2026')->assertSee('09:35')->assertSee($staff->name)
+            ->assertViewHas('records', function ($records) use ($post, $staff) {
+                $record = $records->firstWhere('id', $post->id);
+                return $record->relationLoaded('creator') && $record->creator->id === $staff->id;
+            });
+        $post->update(['created_by' => null]);
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['name' => 'Super Admin'], ['modules' => []])->id]))
+            ->get('/admin/posts')->assertOk()->assertSee($post->title);
+    }
+
     private function staff(): User
     {
         return User::factory()->create(['name' => 'Nguyễn Văn An', 'role_id' => Role::firstOrCreate(['name' => 'Employee'], ['modules' => ['posts', 'dashboard']])->id]);
@@ -96,7 +130,7 @@ class AdminUpdatesTest extends TestCase
     {
         $admin = User::factory()->create(['role_id' => Role::factory()->create(['name' => 'Super Admin'])->id]);
         $this->actingAs($admin);
-        foreach (['pages' => \App\Models\Page::class, 'series' => \App\Models\Series::class, 'categories' => \App\Models\Category::class, 'tags' => \App\Models\Tag::class] as $resource => $model) {
+        foreach (['series' => \App\Models\Series::class, 'categories' => \App\Models\Category::class, 'tags' => \App\Models\Tag::class] as $resource => $model) {
             $data = ['title' => 'Same title', 'name' => 'Same name', 'slug' => 'same-link', 'content' => '<p>Page body</p>', 'status' => 'draft'];
             foreach (['same-link', 'same-link-2', 'same-link-3'] as $slug) {
                 $this->post('/admin/'.$resource, $data)->assertRedirect()->assertSessionHasNoErrors();
