@@ -40,7 +40,8 @@
     <div class="container d-flex align-items-center flex-wrap gap-4 py-4">
         <a class="brand me-auto" href="/">
             @if($settings['logo']??null)<img src="{{ media_url($settings['logo']) }}" width="48" height="48" loading="lazy" alt="">@endif
-            {{ $settings['site_name']??'Reading Corner' }}<span>EVERY PAGE, A NEW PERSPECTIVE</span>
+            {{ $settings['site_name']??'Reading Corner' }}
+{{--                <span>EVERY PAGE, A NEW PERSPECTIVE</span>--}}
         </a>
         <form action="/search" method="get" class="search-form"><input type="search" name="q" value="{{ is_string(request('q'))?request('q'):'' }}" placeholder="Search articles and stories…" aria-label="Search articles and stories"><button aria-label="Search">⌕</button></form>
     </div>
