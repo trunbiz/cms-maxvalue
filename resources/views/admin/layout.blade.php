@@ -8,6 +8,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title','Admin') · OnePublish</title>@vite(['resources/css/app.css','resources/js/app.js'])
     <script>window.adminTranslations = @json(app()->getLocale() === 'vi' ? json_decode(file_get_contents(lang_path('vi.json')), true) : []);</script>
+    <style>
+        .admin-body .form-select{
+            padding: .7rem 1.85rem !important;
+        }
+    </style>
 </head>
 <body class="admin-body">
 <div class="admin-shell">
@@ -53,11 +58,6 @@
                     <span>{{ __('View website ↗') }}</span></a></div>
         </div>
     </aside>
-    <style>
-        #admin-language{
-            padding: .7rem 1.85rem;
-        }
-    </style>
     <div class="admin-main">
         <header class="admin-topbar">
             <button class="btn btn-outline-secondary d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#sidebar"
