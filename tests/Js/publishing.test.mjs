@@ -232,7 +232,83 @@ test('copy link writes the public URL and confirms success', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => { copied = value; } } });
     initCopyLinks(); document.querySelector('button').click(); await tick();
     assert.equal(copied, 'https://example.org/articles/story'); assert.equal(document.querySelector('button').title, 'Link copied!');
+    assert.equal(document.querySelector('[data-copy-notice]').textContent, 'Link copied!');
+    assert.equal(document.querySelector('[data-copy-notice]').hidden, false);
     dom.window.close();
+});
+
+test('composer remembers the last mode and leaves an empty title slug blank', () => {
+    const dom = setup(queuedComposer().replace('data-composer', 'data-composer data-auto-slug data-author="writer" data-mode-key="post-compose-mode:1"')
+        .replace('<input name="title">', '<input name="title"><input name="slug"><input type="radio" name="compose_mode" value="normal"><button data-publish-copy type="submit">Publish and copy link</button>'));
+    try {
+        window.localStorage.setItem('post-compose-mode:1', 'normal');
+        initPublishing();
+        assert.equal(document.querySelector('[name="compose_mode"]:checked').value, 'normal');
+        assert.equal(document.querySelector('[name="slug"]').value, '');
+        assert.equal(document.querySelector('[data-import-content]').hidden, true);
+        assert.equal(document.querySelector('[data-publish-copy]').hidden, false);
+        const mode = document.querySelector('[value="import"]'); mode.checked = true; change(mode);
+        assert.equal(window.localStorage.getItem('post-compose-mode:1'), 'import');
+        assert.equal(document.querySelector('[data-publish-copy]').disabled, true);
+        assert.equal(document.querySelector('[data-publish-copy]').hidden, true);
+    } finally { dom.window.close(); }
+});
+
+test('publish and copy saves before copying and surfaces validation errors', async () => {
+    const originalFetch = globalThis.fetch;
+    for (const valid of [true, false]) {
+        const dom = setup('<form class="publishing-form" action="/admin/posts"><input name="status" value="draft"><textarea name="content">Body</textarea><div data-save-message hidden></div><button type="submit" data-publish-copy data-save-status="published">Publish</button></form>');
+        try {
+            let copied, calls = 0;
+            Object.defineProperty(window, 'isSecureContext', { value: true });
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => { copied = value; } } });
+            globalThis.fetch = async (url, options) => {
+                calls++; assert.equal(options.body.get('status'), 'published');
+                return { ok: valid, json: async () => valid ? { url: 'https://example.org/story/writer/', edit_url: '/admin/posts/7/edit' } : { errors: { title: ['Title is required.'] } } };
+            };
+            initPublishing();
+            const form = document.querySelector('form'), button = document.querySelector('button');
+            form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+            await tick();
+            assert.equal(calls, 1);
+            if (valid) {
+                assert.equal(copied, 'https://example.org/story/writer/');
+                assert.equal(form.getAttribute('action'), '/admin/posts/7');
+                assert.equal(form.elements._method.value, 'PUT');
+            } else {
+                assert.equal(copied, undefined);
+                assert.equal(document.querySelector('[data-save-message]').textContent, 'Title is required.');
+                assert.equal(button.disabled, false);
+            }
+        } finally { dom.window.close(); }
+    }
+    globalThis.fetch = originalFetch;
+});
+
+test('save and copy retains post status and submits the update method once', async () => {
+    const originalFetch = globalThis.fetch;
+    for (const status of ['draft', 'published', 'bin']) {
+        const dom = setup(`<form class="publishing-form" action="/admin/posts/7"><input name="_method" value="PUT"><input name="status" value="${status}"><textarea name="content">Changed body</textarea><div data-save-message hidden></div><button type="submit" data-save-copy>Save and copy</button></form>`);
+        try {
+            let copied;
+            Object.defineProperty(window, 'isSecureContext', { value: true });
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText: async value => { copied = value; } } });
+            globalThis.fetch = async (url, options) => {
+                assert.equal(url, 'http://localhost/admin/posts/7');
+                assert.equal(options.body.get('status'), status);
+                assert.deepEqual(options.body.getAll('_method'), ['PUT']);
+                return { ok: true, json: async () => ({ url: 'https://example.org/updated/writer/', edit_url: '/admin/posts/7/edit' }) };
+            };
+            initPublishing();
+            const form = document.querySelector('form'), button = document.querySelector('button');
+            form.dispatchEvent(new window.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+            await tick();
+            assert.equal(copied, 'https://example.org/updated/writer/');
+            assert.equal(form.querySelectorAll('[name="_method"]').length, 1);
+            assert.equal(document.querySelector('[data-save-message]').textContent, 'Changes saved.');
+        } finally { dom.window.close(); }
+    }
+    globalThis.fetch = originalFetch;
 });
 
 test('CKEditor initializes its upload plugin and exposes rich text commands', async () => {

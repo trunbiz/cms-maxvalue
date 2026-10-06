@@ -3,7 +3,7 @@
   "Add": "Thêm",
   "Add item": "Thêm mục",
   "All categories": "Tất cả danh mục",
-  "All series": "Tất cả bộ truyện",
+  "All series": "Tất cả chương",
   "All statuses": "Tất cả trạng thái",
   "Back": "Quay lại",
   "Back to manuscript": "Quay lại bản thảo",
@@ -16,7 +16,7 @@
   "Created by": "Người tạo",
   "Created at": "Thời gian tạo",
   "If no category is selected, Stories is used.": "Nếu không chọn danh mục, mặc định dùng Stories.",
-  "Each manuscript creates a new story. Enter its title above. Mark each chapter with CHAPTER X - Title.": "Mỗi bản thảo tạo một bộ truyện mới. Nhập tiêu đề bắt buộc ở trên. Đánh dấu từng chương bằng CHAPTER X - Title.",
+  "Each manuscript creates a new story. Enter its title above. Mark each chapter with CHAPTER X - Title.": "Mỗi bản thảo tạo một chương mới. Nhập tiêu đề bắt buộc ở trên. Đánh dấu từng chương bằng CHAPTER X - Title.",
   "Post permalinks": "Đường dẫn bài viết",
   "Choose how article links appear. The structure and example below update with your selection.": "Chọn cách hiển thị đường dẫn bài viết. Cấu trúc và URL mẫu bên dưới sẽ cập nhật theo lựa chọn.",
   "Plain": "Cơ bản",
@@ -228,5 +228,9 @@
   "Will replace existing chapter": "Sẽ thay chương hiện có",
   "New chapter": "Chương mới",
   "No cover image is available. Select a featured image or add a cover to the selected story, then analyze again.": "Chưa có ảnh bìa. Chọn ảnh đại diện hoặc thêm ảnh bìa cho bộ truyện rồi phân tích lại.",
-  "Open each chapter to review its complete content. To change the text, edit the manuscript and analyze again.": "Mở từng chương để xem nội dung đầy đủ. Để thay đổi nội dung, sửa bản thảo rồi phân tích lại."
+  "Open each chapter to review its complete content. To change the text, edit the manuscript and analyze again.": "Mở từng chương để xem nội dung đầy đủ. Để thay đổi nội dung, sửa bản thảo rồi phân tích lại.",
+  "Publish and copy link": "Xuất bản và copy link",
+  "Save and copy link": "Lưu và copy link",
+  "Post name and author": "Tên bài viết và tác giả",
+  "Unable to save the article. Please try again.": "Không thể lưu bài viết. Vui lòng thử lại."
 }

@@ -113,12 +113,20 @@ class ResourceController extends Controller
         $model = $this->definition($resource)['model'];
         $record = $service->save($resource, new $model, $request->validated(), $request->user());
 
+        if ($resource === 'posts' && $request->expectsJson()) {
+            return response()->json(['url' => post_url($record), 'edit_url' => '/admin/posts/'.$record->id.'/edit'], 201);
+        }
+
         return redirect($resource === 'posts' ? '/admin/posts' : '/admin/'.$resource.'/'.$record->id.'/edit')->with('success', 'Created successfully.');
     }
 
     public function update(ResourceRequest $request, string $resource, int $id, ResourceService $service)
     {
-        $service->save($resource, $this->query($resource)->findOrFail($id), $request->validated(), $request->user());
+        $record = $service->save($resource, $this->query($resource)->findOrFail($id), $request->validated(), $request->user());
+
+        if ($resource === 'posts' && $request->expectsJson()) {
+            return response()->json(['url' => post_url($record), 'edit_url' => '/admin/posts/'.$record->id.'/edit']);
+        }
 
         return ($resource === 'posts' ? redirect('/admin/posts') : back())->with('success', 'Changes saved.');
     }

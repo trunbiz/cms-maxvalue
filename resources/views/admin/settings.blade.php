@@ -3,12 +3,12 @@
 @section('content')
 @php
     $mode = old('permalink_structure', $settings['permalink_structure'] ?? 'name');
-    if (!in_array($mode, ['plain', 'day', 'month', 'numeric', 'name', 'custom'])) $mode = 'name';
+    if (!in_array($mode, ['plain', 'day', 'month', 'numeric', 'name', 'author', 'custom'])) $mode = 'name';
     $presets = \App\Services\PermalinkService::PRESETS;
     $custom = (string) old('permalink_custom', ($settings['permalink_custom'] ?? null) ?: $presets['name']);
     $structure = $mode === 'custom' ? $custom : ($presets[$mode] ?? $presets['name']);
-    $tokens = ['%year%' => now()->format('Y'), '%monthnum%' => now()->format('m'), '%day%' => now()->format('d'), '%post_id%' => '123', '%postname%' => 'sample-post'];
-    $labels = ['plain' => 'Plain', 'day' => 'Day and name', 'month' => 'Month and name', 'numeric' => 'Numeric', 'name' => 'Post name', 'custom' => 'Custom structure'];
+    $tokens = ['%year%' => now()->format('Y'), '%monthnum%' => now()->format('m'), '%day%' => now()->format('d'), '%post_id%' => '123', '%postname%' => 'sample-post', '%author%' => 'sample-author'];
+    $labels = ['plain' => 'Plain', 'day' => 'Day and name', 'month' => 'Month and name', 'numeric' => 'Numeric', 'name' => 'Post name', 'author' => 'Post name and author', 'custom' => 'Custom structure'];
 @endphp
 <form method="post" action="/admin/settings" class="admin-settings-form">
 @csrf @method('PUT')

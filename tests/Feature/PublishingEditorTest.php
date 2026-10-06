@@ -52,12 +52,50 @@ class PublishingEditorTest extends TestCase
             ->assertSee('value="normal" checked', false);
         $post = Post::factory()->create(['status' => 'draft']);
         $this->get('/admin/posts/'.$post->id.'/edit')->assertOk()
-            ->assertSee('value="draft" selected', false);
+            ->assertSee('name="status" value="draft"', false)->assertDontSee('id="field-status"', false);
         $this->get('/admin/posts')->assertOk()
             ->assertSee('title="Edit" aria-label="Edit"', false)
             ->assertSee('title="Delete" aria-label="Delete"', false)
             ->assertSee('title="Copy link" aria-label="Copy link"', false)
             ->assertSee('data-copy-link="'.post_url($post).'"', false);
+    }
+
+    public function test_publish_and_copy_returns_the_saved_public_link(): void
+    {
+        $this->actingAs($this->admin());
+        $this->get('/admin/posts/create?mode=normal')->assertOk()
+            ->assertSee('Publish and copy link')->assertSee('data-mode-key', false)
+            ->assertDontSee('New content is published by default. Use Save draft to keep it private.');
+        $response = $this->postJson('/admin/posts', ['title' => 'Copy published article', 'type' => 'normal', 'content' => '<p>Public body</p>', 'status' => 'published']);
+        $post = Post::where('title', 'Copy published article')->firstOrFail();
+        $response->assertCreated()->assertJson(['url' => post_url($post), 'edit_url' => '/admin/posts/'.$post->id.'/edit']);
+        $this->get(post_url($post))->assertOk()->assertSee('Public body');
+        $this->get('/admin/posts/'.$post->id.'/edit')->assertOk()->assertSee('Title &amp; image', false);
+        $this->postJson('/admin/posts', ['title' => '', 'type' => 'normal'])->assertUnprocessable();
+    }
+
+    public function test_edit_form_hides_publishing_and_tags_and_save_copy_preserves_existing_metadata(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+        foreach (['draft', 'published', 'bin'] as $status) {
+            $post = Post::factory()->create(['created_by' => $admin->id, 'status' => $status, 'published_at' => '2026-09-01 12:00:00']);
+            $tag = \App\Models\Tag::factory()->create();
+            $post->tags()->attach($tag);
+            $this->get('/admin/posts/'.$post->id.'/edit')->assertOk()
+                ->assertSee('Save and copy link')->assertSee('Title &amp; image', false)
+                ->assertDontSee('id="field-status"', false)->assertDontSee('name="tag_selection"', false)
+                ->assertDontSee('id="field-published_at"', false);
+            $data = ['title' => 'Updated '.$status, 'slug' => $post->slug, 'content' => '<p>Updated body</p>', 'type' => 'normal', 'status' => $status, 'published_at' => '2026-09-01 12:00:00'];
+            $response = $this->putJson('/admin/posts/'.$post->id, $data)->assertOk();
+            $post->refresh();
+            $response->assertJson(['url' => post_url($post), 'edit_url' => '/admin/posts/'.$post->id.'/edit']);
+            $this->assertSame($status, $post->status);
+            $this->assertSame('2026-09-01 12:00:00', $post->published_at->format('Y-m-d H:i:s'));
+            $this->assertSame([$tag->id], $post->tags->pluck('id')->all());
+            $this->put('/admin/posts/'.$post->id, $data)->assertRedirect('/admin/posts')->assertSessionHasNoErrors();
+            $this->assertSame([$tag->id], $post->fresh()->tags->pluck('id')->all());
+        }
     }
 
     public function test_new_manuscripts_require_title_and_new_posts_default_to_stories(): void
@@ -293,7 +331,8 @@ class PublishingEditorTest extends TestCase
         $chapter = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 1, 'status' => 'draft']);
         $other = Post::factory()->create(['type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 2, 'status' => 'draft']);
         $data = ['title' => 'First chapter', 'content' => '<p>Chapter body</p>', 'status' => 'published'];
-        $this->get('/admin/posts/'.$chapter->id.'/edit')->assertSee('Publish the story with this chapter');
+        $this->get('/admin/posts/'.$chapter->id.'/edit')->assertDontSee('id="field-status"', false)
+            ->assertSee('name="status" value="draft"', false)->assertSee('Save and copy link');
         $this->put('/admin/posts/'.$chapter->id, $data)->assertSessionHasErrors('status');
         $this->assertSame('draft', $chapter->fresh()->status);
         $this->put('/admin/posts/'.$chapter->id, $data + ['publish_series' => '1'])->assertSessionHasNoErrors();

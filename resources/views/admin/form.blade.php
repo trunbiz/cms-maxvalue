@@ -33,15 +33,13 @@
         if ($isPost) {
             unset($groups['Content']['excerpt']);
             $groups['Search & link'] = [];
-            if (!$record->exists) {
-                $groups['Publishing'] = [];
-                unset($groups['Organization']['tags']);
-            }
+            $groups['Publishing'] = [];
+            unset($groups['Organization']['tags']);
         }
     @endphp
     <form method="post" enctype="multipart/form-data"
           action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form"
-          @if($isPost && !$record->exists) data-composer data-auto-slug data-author="{{ \Illuminate\Support\Str::slug(auth()->user()->name) }}" @endif>
+          @if($isPost && !$record->exists) data-composer data-auto-slug data-author="{{ \Illuminate\Support\Str::slug(auth()->user()->name) }}" data-mode-key="post-compose-mode:{{ auth()->id() }}" data-mode-explicit="{{ session()->hasOldInput('compose_mode') || request()->has('mode') ? 'true' : 'false' }}" @endif>
         @csrf @if($record->exists)
             @method('PUT')
         @endif
@@ -49,7 +47,8 @@
             <div class="alert alert-warning">{{ __('Enable JavaScript to use the rich text editor, image previews and chapter analysis.') }}</div>
         </noscript>
         @if($isPost)
-            @if(!$record->exists)<input type="hidden" name="status" value="published">@endif
+            <input type="hidden" name="status" value="{{ $record->exists ? $record->status : 'published' }}">
+            @if($record->exists && $record->published_at)<input type="hidden" name="published_at" value="{{ $record->published_at->format('Y-m-d H:i:s') }}">@endif
             <input type="hidden" name="type" value="{{ $isChapter?'chapter':'normal' }}">
             @if($isChapter)
                 <div class="alert alert-light border">Editing chapter {{ $record->chapter_number }} of
@@ -70,7 +69,7 @@
         <div
             class="publishing-grid @if(!$groups['Publishing'] && !$groups['Organization'] && !$groups['Featured image']) publishing-grid-wide @endif">
             <div class="publishing-main">
-                @if($isPost && !$record->exists)
+                @if($isPost)
                     <section class="editor-section mb-4">
                         <h2 class="section-title">{{ __('Title & image') }}</h2>
                         <div class="row gx-4">
@@ -87,7 +86,7 @@
                 <section class="editor-section" data-standard-content @if($importMode) hidden @endif>
                     <h2 class="section-title">{{ __('Content') }}</h2>
                     @foreach($groups['Content'] as $field=>$label)
-                        @if(!($isPost && !$record->exists && in_array($field,['title','excerpt'])))
+                        @if(!($isPost && in_array($field,['title','excerpt'])))
                             @if(in_array($field,['title','name']) && isset($definition['fields']['slug']))
                                 <div class="row gx-4">
                                     <div class="col-md-6">@include('admin.fields.input')</div>
@@ -143,7 +142,7 @@
             </div>
             <aside class="publishing-aside">
                 @foreach(['Publishing','Organization','Featured image'] as $group)
-                    @if($groups[$group] && !($group==='Featured image' && $isPost && !$record->exists))
+                    @if($groups[$group] && !($group==='Featured image' && $isPost))
                         <section class="editor-section mb-4">
                             <h2 class="section-title">{{ __($group) }}</h2>
                             @foreach($groups[$group] as $field=>$label)
@@ -166,11 +165,15 @@
         </div>
         <div class="mt-3" data-save-message role="status" aria-live="polite" hidden></div>
         <div class="save-bar"><span class="small text-secondary me-auto"
-                                    data-save-hint>{{ __($record->exists?'Save your changes when ready.':'New content is published by default. Use Save draft to keep it private.') }}</span>
+                                    data-save-hint>{{ $record->exists ? __('Save your changes when ready.') : '' }}</span>
             <button type="submit" class="btn btn-primary px-4 order-2" data-save @if($isPost && !$record->exists) name="status" value="published" data-save-status="published" @endif>{{ __($importMode?'Save chapters':'Save changes') }}</button>
             @if($isPost && !$record->exists)
+                <button type="submit" class="btn btn-success order-3" name="status" value="published" data-save-status="published" data-publish-copy @if($importMode) hidden disabled @endif>{{ __('Publish and copy link') }}</button>
                 <button type="submit" class="btn btn-outline-secondary order-1" name="status" value="draft" data-save-draft data-save-status="draft">{{ __('Save draft') }}</button>
             @else
+                @if($isPost)
+                    <button type="submit" class="btn btn-success order-3" data-save-copy>{{ __('Save and copy link') }}</button>
+                @endif
                 <a class="btn btn-light order-1" href="/admin/{{ $resource }}">{{ __('Back') }}</a>
             @endif
         </div>

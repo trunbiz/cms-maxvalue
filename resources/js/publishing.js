@@ -1,5 +1,6 @@
 const t = text => window.adminTranslations?.[text] || text;
 import { parseChapters, chapterPreview } from './chapter-parser.js';
+import { copyLink } from './copy-link.js';
 function waitForUploads(form) {
     return new Promise(resolve => {
         const observer = new MutationObserver(check);
@@ -13,6 +14,22 @@ function waitForUploads(form) {
 }
 export function initPublishing() {
     document.querySelectorAll('.publishing-form').forEach(form => {
+        if (form.dataset.modeKey) {
+            try {
+                const remembered = window.localStorage.getItem(form.dataset.modeKey);
+                if (form.dataset.modeExplicit !== 'true' && ['normal', 'import'].includes(remembered)) {
+                    form.querySelector(`[name="compose_mode"][value="${remembered}"]`).checked = true;
+                }
+                const remember = () => window.localStorage.setItem(form.dataset.modeKey, form.querySelector('[name="compose_mode"]:checked').value);
+                remember();
+                form.querySelectorAll('[name="compose_mode"]').forEach(mode => mode.addEventListener('change', () => {
+                    try { remember(); } catch {}
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('mode', mode.value);
+                    window.history.replaceState(null, '', url);
+                }));
+            } catch {}
+        }
         const title = form.querySelector('[name="title"], [name="name"]');
         const description = form.querySelector('[name="excerpt"], [name="description"]');
         const seoTitle = form.querySelector('[name="seo_title"]');
@@ -23,20 +40,20 @@ export function initPublishing() {
                 .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
             let automatic = !slug.value || slug.value === slugify(title.value);
             const updateSlug = () => {
-                if (automatic) slug.value = slugify(title.value) + (form.querySelector('[name="compose_mode"]:checked')?.value === 'normal' && form.dataset.author ? '/' + form.dataset.author : '');
+                if (automatic) slug.value = title.value.trim() ? slugify(title.value) + (form.querySelector('[name="compose_mode"]:checked')?.value === 'normal' && form.dataset.author ? '/' + form.dataset.author : '') : '';
             };
             title.addEventListener('input', updateSlug);
             form.querySelectorAll('[name="compose_mode"]').forEach(mode => mode.addEventListener('change', updateSlug));
             slug.addEventListener('input', () => { automatic = !slug.value.trim(); updateSlug(); });
             updateSlug();
         }
-        let queued = false;
+        let queued = false, publishing = false;
         const showSaveMessage = (text, failed = false) => {
             const message = form.querySelector('[data-save-message]');
             if (message) { message.hidden = false; message.className = `alert alert-${failed ? 'danger' : 'info'} mt-3`; message.textContent = t(text); }
         };
         form.addEventListener('submit', async event => {
-            if (queued) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+            if (queued || publishing) { event.preventDefault(); event.stopImmediatePropagation(); return; }
             const submitter = event.submitter;
             const status = form.querySelector('[name="status"]');
             if (submitter?.dataset.saveStatus && status) status.value = submitter.dataset.saveStatus;
@@ -45,9 +62,37 @@ export function initPublishing() {
                 showSaveMessage('Image upload failed. Please select the image again before saving.', true);
                 return;
             }
-            if (!form.querySelector('[data-upload-pending="true"]')) return;
+            if (!form.querySelector('[data-upload-pending="true"]')) {
+                if (!submitter?.matches('[data-publish-copy], [data-save-copy]')) return;
+                const creating = submitter.hasAttribute('data-publish-copy');
+                event.preventDefault(); event.stopImmediatePropagation(); publishing = true;
+                const buttons = [...form.querySelectorAll('button[type="submit"]')];
+                buttons.forEach(button => { button.disabled = true; });
+                form.setAttribute('aria-busy', 'true');
+                try {
+                    const data = new FormData(form);
+                    if (creating) data.set('status', 'published');
+                    const content = form.querySelector('[name="content"]');
+                    if (content?.editor) data.set('content', content.editor.getData());
+                    const response = await fetch(form.action, { method: 'POST', body: data, headers: { Accept: 'application/json' } });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.errors ? Object.values(result.errors).flat().join(' ') : result.message || t('Unable to save the article. Please try again.'));
+                    // Switch to updating the saved article, including when clipboard access is denied.
+                    form.action = result.edit_url.replace(/\/edit$/, '');
+                    if (!form.querySelector('[name="_method"]')) {
+                        const method = document.createElement('input'); method.type = 'hidden'; method.name = '_method'; method.value = 'PUT'; form.append(method);
+                    }
+                    form.querySelectorAll('[name="compose_mode"]').forEach(mode => { mode.disabled = true; });
+                    if (creating) { submitter.removeAttribute('data-publish-copy'); submitter.hidden = true; }
+                    await copyLink(result.url);
+                    showSaveMessage(creating ? 'Created successfully.' : 'Changes saved.');
+                    window.setTimeout(() => { window.location.assign('/admin/posts'); }, 1500);
+                } catch (failure) { showSaveMessage(failure.message, true); }
+                finally { publishing = false; buttons.forEach(button => { button.disabled = button.hidden; }); form.removeAttribute('aria-busy'); }
+                return;
+            }
             event.preventDefault(); event.stopImmediatePropagation(); queued = true;
-            const buttons = [...form.querySelectorAll('[data-save], [data-save-draft]')];
+            const buttons = [...form.querySelectorAll('[data-save], [data-save-draft], [data-publish-copy], [data-save-copy]')];
             buttons.forEach(button => { button.disabled = true; });
             form.setAttribute('aria-busy', 'true');
             showSaveMessage('Uploading images. Your content will be saved automatically when the uploads finish.');
@@ -158,7 +203,6 @@ export function initPublishing() {
     const message = form.querySelector('[data-import-message]');
     const analyze = form.querySelector('[data-analyze]');
     const save = form.querySelector('[data-save]');
-    const hint = form.querySelector('[data-save-hint]');
     const confirmation = document.querySelector('[data-import-confirm]');
     let token = '', revision = 0, busy = false, saving = false;
     const importMode = () => form.querySelector('[name="compose_mode"]:checked').value === 'import';
@@ -182,7 +226,8 @@ export function initPublishing() {
         form.querySelectorAll('[data-standard-required]').forEach(marker => { marker.hidden = false; });
         const titleInput = form.querySelector('[name="title"]');
         if (titleInput) { titleInput.required = true; titleInput.setAttribute('aria-required', 'true'); }
-        hint.textContent = t('New content is published by default. Use Save draft to keep it private.');
+        const publishCopy = form.querySelector('[data-publish-copy]');
+        if (publishCopy) { publishCopy.hidden = importing; publishCopy.disabled = importing; }
         invalidate();
     };
     form.querySelectorAll('[name="compose_mode"]').forEach(input => input.addEventListener('change', toggle));

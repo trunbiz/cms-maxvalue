@@ -83,7 +83,7 @@ class ResourceService
         try {
             DB::transaction(function () use ($resource, $record, $data) {
                 $content = $data['content'] ?? null;
-                $tags = $data['tags'] ?? [];
+                $tags = $data['tags'] ?? ($resource === 'posts' && $record->exists ? null : []);
                 $categoryIds = $data['category_ids'] ?? array_filter([$data['category_id'] ?? null]);
                 unset($data['tags'], $data['category_ids']);
                 if ($resource === 'posts') {
@@ -117,7 +117,7 @@ class ResourceService
                     }
                 }
                 if (in_array($resource, ['posts', 'series'])) {
-                    $this->syncTags($record, $this->tagIds($tags));
+                    if ($tags !== null) $this->syncTags($record, $this->tagIds($tags));
                     $this->syncCategories($record, $categoryIds);
                 }
             });

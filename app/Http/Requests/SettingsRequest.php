@@ -9,8 +9,8 @@ class SettingsRequest extends FormRequest
     {
         return [
             'head_html' => 'nullable|string|max:100000',
-            'permalink_structure' => ['required', Rule::in(['plain', 'day', 'month', 'numeric', 'name', 'custom'])],
-            'permalink_custom' => ['nullable', 'required_if:permalink_structure,custom', 'string', 'max:200', 'regex:~^/(?:[a-z0-9-]+|%(?:year|monthnum|day|post_id|postname)%)(?:/(?:[a-z0-9-]+|%(?:year|monthnum|day|post_id|postname)%))*/$~', function ($attribute, $value, $fail) {
+            'permalink_structure' => ['required', Rule::in(['plain', 'day', 'month', 'numeric', 'name', 'author', 'custom'])],
+            'permalink_custom' => ['nullable', 'required_if:permalink_structure,custom', 'string', 'max:200', 'regex:~^/(?:[a-z0-9-]+|%(?:year|monthnum|day|post_id|postname|author)%)(?:/(?:[a-z0-9-]+|%(?:year|monthnum|day|post_id|postname|author)%))*/$~', function ($attribute, $value, $fail) {
                 preg_match_all('/%[a-z_]+%/', $value, $tokens);
                 if (count($tokens[0]) !== count(array_unique($tokens[0]))) $fail('Use each permalink token only once.');
                 if (!str_contains($value, '%postname%') && !str_contains($value, '%post_id%')) $fail('Include %postname% or %post_id% in the custom structure.');

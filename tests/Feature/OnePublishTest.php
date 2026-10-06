@@ -61,7 +61,7 @@ class OnePublishTest extends TestCase
     {
         $post = Post::factory()->create(['slug'=>'sample/author', 'published_at'=>'2026-09-01 00:00:00']);
         $admin = $this->staff(true);
-        foreach (['plain', 'day', 'month', 'numeric', 'name', 'custom'] as $mode) {
+        foreach (['plain', 'day', 'month', 'numeric', 'name', 'author', 'custom'] as $mode) {
             $this->actingAs($admin)->put('/admin/settings', ['permalink_structure'=>$mode, 'permalink_custom'=>'/read/%year%/%post_id%/%postname%/'])->assertSessionHasNoErrors();
             $url = post_url($post);
             $this->get($url)->assertOk()->assertSee($post->title);
@@ -74,5 +74,18 @@ class OnePublishTest extends TestCase
         $this->get('/2026/10/invalid')->assertNotFound();
         $this->put('/admin/settings', ['permalink_structure'=>'custom', 'permalink_custom'=>'/static/'])->assertSessionHasErrors('permalink_custom');
         $this->put('/admin/settings', ['permalink_structure'=>'custom', 'permalink_custom'=>'/admin/%post_id%/'])->assertSessionHasErrors('permalink_custom');
+    }
+
+    public function test_custom_author_token_resolves_in_any_position_and_rejects_the_wrong_author(): void
+    {
+        $post = Post::factory()->create(['slug' => 'sample/writer']);
+        $this->actingAs($this->staff(true));
+        $this->get('/admin/settings')->assertOk()->assertSee('data-permalink-token="%author%"', false);
+        foreach (['/%author%/%postname%/', '/read/%postname%/%author%/', '/read/%post_id%/%author%/'] as $pattern) {
+            $this->put('/admin/settings', ['permalink_structure' => 'custom', 'permalink_custom' => $pattern])->assertSessionHasNoErrors();
+            $url = post_url($post);
+            $this->get($url)->assertOk();
+            $this->get(str_replace('writer', 'wrong-author', $url))->assertNotFound();
+        }
     }
 }
