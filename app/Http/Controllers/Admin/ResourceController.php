@@ -54,6 +54,10 @@ class ResourceController extends Controller
         }
         if ($resource === 'posts') {
             $q->with(['series', 'creator']);
+            if (!$request->filled('status') && !$request->filled('q')) {
+                $q->whereIn('status', ['published', 'draft']);
+            }
+            $q->orderByRaw("CASE WHEN status = 'bin' THEN 1 ELSE 0 END");
             if ($request->filled('created_from')) {
                 $q->where('created_at', '>=', \Carbon\Carbon::parse($request->validated('created_from'))->startOfDay());
             }

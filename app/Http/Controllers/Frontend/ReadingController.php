@@ -61,9 +61,10 @@ class ReadingController extends Controller
     public function home()
     {
         if (request()->has('p')) return $this->permalink();
-        $series = $this->seriesQuery()->latest('updated_at')->limit(8)->get();
+        $readableSeries = $this->seriesQuery()->whereHas('chapters', fn ($q) => $q->published());
+        $series = (clone $readableSeries)->latest('updated_at')->limit(8)->get();
         $posts = $this->posts()->where('type', 'chapter')->latest('published_at')->orderByDesc('id')->limit(6)->get();
-        $categorySeries = $this->seriesQuery()->latest('updated_at')->limit(60)->get()->groupBy('category_id');
+        $categorySeries = (clone $readableSeries)->latest('updated_at')->limit(60)->get()->groupBy('category_id');
 
         return $this->pageView('home', compact('series', 'posts', 'categorySeries'));
     }
