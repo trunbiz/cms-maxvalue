@@ -26,7 +26,16 @@ class ReadingController extends Controller
 
     private function seriesQuery()
     {
-        return Series::select(self::SERIES_COLUMNS)->published()->with('category')->withCount(['chapters' => fn ($q) => $q->published()]);
+        return Series::select(self::SERIES_COLUMNS)->readable()->with('category')->withCount(['chapters' => fn ($q) => $q->published()->where('type', 'chapter')]);
+    }
+
+    private function postsInCategories(array $slugs, bool $includeChapters = false)
+    {
+        return $this->posts()->where(function ($posts) use ($slugs, $includeChapters) {
+            $posts->whereHas('category', fn ($category) => $category->whereIn('slug', $slugs))
+                ->orWhereHas('categories', fn ($categories) => $categories->whereIn('categories.slug', $slugs));
+            if ($includeChapters) $posts->orWhere('type', 'chapter');
+        });
     }
 
     private function pageView(string $view, array $data = [], $entity = null)
@@ -61,7 +70,7 @@ class ReadingController extends Controller
     public function home()
     {
         if (request()->has('p')) return $this->permalink();
-        $readableSeries = $this->seriesQuery()->whereHas('chapters', fn ($q) => $q->published());
+        $readableSeries = $this->seriesQuery();
         $series = (clone $readableSeries)->latest('updated_at')->limit(8)->get();
         $posts = $this->posts()->where('type', 'chapter')->latest('published_at')->orderByDesc('id')->limit(6)->get();
         $categorySeries = (clone $readableSeries)->latest('updated_at')->limit(60)->get()->groupBy('category_id');
@@ -146,12 +155,12 @@ class ReadingController extends Controller
 
     public function stories(BrowseRequest $request)
     {
-        return $this->pageView('listing', ['heading' => 'Stories', 'series' => $this->seriesQuery()->latest('updated_at')->paginate(12), 'posts' => $this->posts()->whereRaw('1=0')->paginate(12)]);
+        return $this->pageView('listing', ['heading' => 'Stories', 'posts' => $this->postsInCategories(['stories'], true)->latest('published_at')->orderByDesc('id')->paginate(12)->withQueryString()]);
     }
 
     public function literature(BrowseRequest $request)
     {
-        return $this->pageView('listing', ['heading' => 'Liferature', 'posts' => $this->posts()->where('type', 'normal')->whereHas('categories', fn ($q) => $q->whereIn('slug', ['liferature', 'literature']))->latest('published_at')->paginate(12)]);
+        return $this->pageView('listing', ['heading' => 'Liferature', 'posts' => $this->postsInCategories(['liferature', 'literature'])->latest('published_at')->orderByDesc('id')->paginate(12)->withQueryString()]);
     }
 
     public function permalink(?string $path = null)
@@ -166,7 +175,7 @@ class ReadingController extends Controller
 
     public function articles(BrowseRequest $request)
     {
-        return $this->pageView('listing', ['heading' => 'Articles', 'description' => 'Essays, reading notes, and ideas worth spending time with.', 'posts' => $this->posts()->where('type', 'normal')->latest('published_at')->paginate(12)->withQueryString()]);
+        return $this->pageView('listing', ['heading' => 'Articles', 'description' => 'Essays, reading notes, and ideas worth spending time with.', 'posts' => $this->posts()->latest('published_at')->orderByDesc('id')->paginate(12)->withQueryString()]);
     }
 
     private function articleView(Post $article, bool $isPreview = false)
@@ -235,7 +244,9 @@ class ReadingController extends Controller
             foreach (array_keys(PublisherService::PAGES) as $slug) $emit(url('/pages/'.$slug));
             foreach ([Category::class => 'categories', Tag::class => 'tags', Series::class => 'stories'] as $class => $prefix) {
                 $q = $class::select(['id', 'slug']);
-                if ($class === Series::class || $class === Page::class) {
+                if ($class === Series::class) {
+                    $q->readable();
+                } elseif ($class === Page::class) {
                     $q->published();
                 }
                 foreach ($q->lazyById(500) as $row) {

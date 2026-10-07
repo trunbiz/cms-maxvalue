@@ -37,4 +37,9 @@ class Series extends Model
     {
         return $q->where('status', 'published');
     }
+
+    public function scopeReadable($q)
+    {
+        return $q->published()->whereHas('chapters', fn ($chapters) => $chapters->published()->where('type', 'chapter'));
+    }
 }

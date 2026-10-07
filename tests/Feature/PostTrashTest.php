@@ -67,4 +67,53 @@ class PostTrashTest extends TestCase
         $this->get('/admin/posts')->assertOk()->assertDontSee($chapter->title);
         $this->get('/admin/posts?q=Bulk')->assertOk()->assertSee($chapter->title);
     }
+
+    public function test_trashing_last_chapter_removes_story_from_every_public_listing_and_sitemap(): void
+    {
+        config(['responsecache.enabled' => true]);
+        $editor = $this->editor();
+        $category = \App\Models\Category::factory()->create(['slug' => 'literature']);
+        $tag = \App\Models\Tag::factory()->create();
+        $series = Series::factory()->create(['created_by' => $editor->id, 'category_id' => $category->id, 'title' => 'Hidden story fixture']);
+        $series->tags()->attach($tag);
+        $chapter = Post::factory()->create(['created_by' => $editor->id, 'series_id' => $series->id, 'type' => 'chapter', 'chapter_number' => 1]);
+        $empty = Series::factory()->create(['title' => 'Empty story fixture']);
+        $draft = Series::factory()->create(['title' => 'Draft chapters fixture']);
+        Post::factory()->create(['series_id' => $draft->id, 'type' => 'chapter', 'chapter_number' => 1, 'status' => 'draft']);
+        $future = Series::factory()->create(['title' => 'Future chapters fixture']);
+        Post::factory()->create(['series_id' => $future->id, 'type' => 'chapter', 'chapter_number' => 1, 'published_at' => now()->addDay()]);
+        $urls = ['/', '/categories/literature', '/tags/'.$tag->slug, '/search?q=fixture'];
+        foreach ($urls as $url) {
+            $this->get($url)->assertOk()->assertSee($series->title)->assertDontSee($empty->title)->assertDontSee($draft->title)->assertDontSee($future->title);
+        }
+        $sitemap = $this->get('/sitemap.xml')->assertOk()->streamedContent();
+        $this->assertStringContainsString(url('/stories/'.$series->slug), $sitemap);
+        $this->assertStringNotContainsString(url('/stories/'.$empty->slug), $sitemap);
+        $this->actingAs($editor)->delete('/admin/posts/'.$chapter->id)->assertRedirect();
+        foreach ($urls as $url) $this->get($url)->assertOk()->assertDontSee($series->title);
+        $this->assertStringNotContainsString(url('/stories/'.$series->slug), $this->get('/sitemap.xml')->assertOk()->streamedContent());
+        $this->get('/stories/'.$series->slug)->assertNotFound();
+        $this->post('/admin/posts/bulk', ['ids' => [$chapter->id], 'action' => 'published'])->assertRedirect();
+        foreach ($urls as $url) $this->get($url)->assertOk()->assertSee($series->title);
+    }
+
+    public function test_trashing_articles_removes_them_from_cached_articles_literature_topics_and_search(): void
+    {
+        config(['responsecache.enabled' => true]);
+        $editor = $this->editor();
+        $category = \App\Models\Category::factory()->create(['slug' => 'literature']);
+        $tag = \App\Models\Tag::factory()->create();
+        $article = Post::factory()->create(['created_by' => $editor->id, 'category_id' => $category->id, 'title' => 'Removed article fixture']);
+        $article->categories()->attach($category);
+        $article->tags()->attach($tag);
+        $other = Post::factory()->create(['title' => 'Remaining article fixture']);
+        $urls = ['/articles', '/liferature', '/categories/literature', '/tags/'.$tag->slug, '/search?q=fixture'];
+        foreach ($urls as $url) $this->get($url)->assertOk()->assertSee($article->title);
+        $this->get(post_url($article))->assertOk();
+        $this->actingAs($editor)->delete('/admin/posts/'.$article->id)->assertRedirect();
+        foreach ($urls as $url) $this->get($url)->assertOk()->assertDontSee($article->title);
+        $this->get('/articles')->assertOk()->assertSee($other->title);
+        $this->get(post_url($article))->assertNotFound();
+        $this->assertStringNotContainsString(post_url($article), $this->get('/sitemap.xml')->assertOk()->streamedContent());
+    }
 }
