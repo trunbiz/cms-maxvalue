@@ -122,19 +122,19 @@ test('featured image upload resolves the queued save with its returned media pat
     } finally { globalThis.fetch = originalFetch; URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke; dom.window.close(); }
 });
 
-test('new post slugs follow Vietnamese titles and respect manual overrides', () => {
+test('new post slugs stay blank until entered and preserve manual input', () => {
     const dom = setup('<form class="publishing-form" data-auto-slug><input name="title"><details><summary>Slug</summary><input name="slug"></details></form>');
     try {
         initPublishing();
         const title = document.querySelector('[name="title"]');
         const slug = document.querySelector('[name="slug"]');
         title.value = 'Đọc truyện: Những ngày đẹp!'; input(title);
-        assert.equal(slug.value, 'doc-truyen-nhung-ngay-dep');
+        assert.equal(slug.value, '');
         slug.value = 'custom-link'; input(slug);
         title.value = 'Tiêu đề mới'; input(title);
         assert.equal(slug.value, 'custom-link');
         slug.value = ''; input(slug);
-        assert.equal(slug.value, 'tieu-de-moi');
+        assert.equal(slug.value, '');
         title.value = ''; input(title); assert.equal(slug.value, '');
         slug.dispatchEvent(new Event('invalid'));
         assert.equal(document.querySelector('details').open, true);

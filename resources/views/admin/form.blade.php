@@ -39,7 +39,7 @@
     @endphp
     <form method="post" enctype="multipart/form-data"
           action="/admin/{{ $resource }}{{ $record->exists?'/'.$record->id:'' }}" class="publishing-form"
-          @if($isPost && !$record->exists) data-composer data-auto-slug data-author="{{ \Illuminate\Support\Str::slug(auth()->user()->name) }}" data-mode-key="post-compose-mode:{{ auth()->id() }}" data-mode-explicit="{{ session()->hasOldInput('compose_mode') || request()->has('mode') ? 'true' : 'false' }}" @endif>
+          @if($isPost && !$record->exists) data-composer data-mode-key="post-compose-mode:{{ auth()->id() }}" data-mode-explicit="{{ session()->hasOldInput('compose_mode') || request()->has('mode') ? 'true' : 'false' }}" @endif>
         @csrf @if($record->exists)
             @method('PUT')
         @endif

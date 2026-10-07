@@ -6,9 +6,9 @@
     <input class="form-control" name="q" value="{{ request('q') }}" placeholder="{{ __('Search...') }}" aria-label="{{ __('Search') }}">
     @if(in_array($resource,['posts','series']))
     <select class="form-select" name="status"><option value="">{{ __('All statuses') }}</option>@foreach(['published'=>'Publish','draft'=>'Unpublish','bin'=>'Bin'] as $key=>$label)<option value="{{ $key }}" @selected(request('status')===$key)>{{ __($label) }}</option>@endforeach</select>
-    <select class="form-select" name="category_id"><option value="">{{ __('All categories') }}</option>@foreach($categories as $option)<option value="{{ $option->id }}" @selected(request('category_id')==$option->id)>{{ $option->name }}</option>@endforeach</select>
-    <select class="form-select" name="created_by"><option value="">{{ __('Created by') }}</option>@foreach($authors as $option)<option value="{{ $option->id }}" @selected(request('created_by')==$option->id)>{{ $option->name }}</option>@endforeach</select>
-    @if($resource==='posts')<select class="form-select" name="series_id"><option value="">{{ __('All series') }}</option>@foreach($series as $option)<option value="{{ $option->id }}" @selected(request('series_id')==$option->id)>{{ $option->title }}</option>@endforeach</select>@endif
+    <select class="form-select" name="category_id" data-searchable-select data-search-label="{{ __('Search categories...') }}" aria-label="{{ __('All categories') }}"><option value="">{{ __('All categories') }}</option>@foreach($categories as $option)<option value="{{ $option->id }}" @selected(request('category_id')==$option->id)>{{ $option->name }}</option>@endforeach</select>
+    <select class="form-select" name="created_by" data-searchable-select data-search-label="{{ __('Search creators...') }}" aria-label="{{ __('Created by') }}"><option value="">{{ __('Created by') }}</option>@foreach($authors as $option)<option value="{{ $option->id }}" @selected(request('created_by')==$option->id)>{{ $option->name }}</option>@endforeach</select>
+    @if($resource==='posts')<select class="form-select" name="series_id" data-searchable-select data-search-label="{{ __('Search stories...') }}" aria-label="{{ __('All series') }}"><option value="">{{ __('All series') }}</option>@foreach($series as $option)<option value="{{ $option->id }}" @selected(request('series_id')==$option->id)>{{ $option->title }}</option>@endforeach</select>@endif
     @endif
     @if($resource==='posts')
         <div class="admin-date-filter"><label class="form-label mb-1" for="created-from">{{ __('Created from') }}</label><input type="date" class="form-control" id="created-from" name="created_from" value="{{ request('created_from') }}"></div>
@@ -34,7 +34,7 @@
             <tr>
                 @if($resource==='posts')<td class="post-selection-cell"><label class="post-selection-target"><input type="checkbox" class="form-check-input" form="bulkPosts" name="ids[]" value="{{ $record->id }}" data-select-post aria-label="Select {{ $record->title }}"></label></td>@endif
                 <td>{{ $resource==='posts' && request('series_id') ? $record->chapter_number : $record->id }}</td>
-                <td><a class="fw-medium" href="/admin/{{ $resource }}/{{ $record->id }}/edit">{{ $record->title??$record->name }}</a>@if($resource==='posts' && $record->series)<small class="d-block text-secondary">{{ $record->series->title }}</small>@endif</td>
+                <td><a class="fw-medium" href="/admin/{{ $resource }}/{{ $record->id }}/edit">@if($resource==='posts' && $record->type==='chapter'){{ __('Chapter :number', ['number'=>$record->chapter_number]) }}: @endif{{ $record->title??$record->name }}</a>@if($resource==='posts' && $record->series)<small class="d-block text-secondary">{{ $record->series->title }}</small>@endif</td>
                 @if(in_array($resource,['posts','series','pages']))<td><span class="badge {{ $record->status==='published'?'text-bg-success':'text-bg-secondary' }}">{{ __($record->status==='published'?'Publish':($record->status==='bin'?'Bin':'Unpublish')) }}</span></td>@endif
                 @if(in_array($resource,['series','tags']))<td>{{ $record->chapters_count??$record->posts_count }}</td>@endif
                 @if($resource==='posts')

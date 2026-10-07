@@ -80,6 +80,48 @@ class AdminUpdatesTest extends TestCase
         $this->get('/articles/'.$posts[0]->slug)->assertOk();
     }
 
+    public function test_manual_slug_overrides_settings_and_survives_editing(): void
+    {
+        $this->actingAs($this->staff());
+        \App\Models\Setting::updateOrCreate(['key' => 'permalink_structure'], ['value' => 'day']);
+        app(\App\Services\CacheInvalidator::class)->invalidate();
+        $data = ['title' => 'Custom article', 'slug' => 'my-link', 'type' => 'normal', 'content' => '<p>Custom body</p>', 'status' => 'published'];
+        $this->post('/admin/posts', $data)->assertSessionHasNoErrors();
+        $post = Post::where('title', 'Custom article')->firstOrFail();
+        $this->assertSame('my-link', $post->slug);
+        $this->assertTrue($post->slug_is_custom);
+        $this->assertSame(url('/my-link/'), post_url($post));
+        $this->get('/my-link/')->assertOk()->assertSee('Custom body');
+        $this->get('/articles')->assertOk()->assertSee(post_url($post), false);
+        $this->put('/admin/posts/'.$post->id, array_replace($data, ['title' => 'Renamed']))->assertSessionHasNoErrors();
+        $this->assertSame('my-link', $post->fresh()->slug);
+        $this->assertTrue($post->fresh()->slug_is_custom);
+        $this->post('/admin/posts', array_replace($data, ['title' => 'Duplicate']))->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('posts', ['title' => 'Duplicate', 'slug' => 'my-link-2', 'slug_is_custom' => true]);
+        $this->put('/admin/posts/'.$post->id, array_replace($data, ['slug' => '']))->assertSessionHasNoErrors();
+        $post->refresh();
+        $this->assertFalse($post->slug_is_custom);
+        $this->assertStringContainsString(now()->format('/Y/m/d/'), post_url($post));
+        $this->get(post_url($post))->assertOk();
+    }
+
+    public function test_posts_list_prefixes_chapters_and_keeps_searchable_filters_selected(): void
+    {
+        $staff = $this->staff();
+        $series = \App\Models\Series::factory()->create(['created_by' => $staff->id]);
+        $category = \App\Models\Category::factory()->create();
+        $chapter = Post::factory()->create(['created_by' => $staff->id, 'type' => 'chapter', 'series_id' => $series->id, 'chapter_number' => 4, 'title' => 'Fourth scene']);
+        $chapter->categories()->attach($category);
+        $normal = Post::factory()->create(['created_by' => $staff->id, 'title' => 'Standard article']);
+        $this->actingAs($staff)->get('/admin/posts')->assertOk()->assertSee('Chapter 4: Fourth scene')->assertSee($normal->title);
+        $this->get('/admin/posts?'.http_build_query(['category_id' => $category->id, 'created_by' => $staff->id, 'series_id' => $series->id]))
+            ->assertOk()->assertSee('Chapter 4: Fourth scene')->assertDontSee($normal->title)
+            ->assertSee('data-search-label="Search categories..."', false)
+            ->assertSee('data-search-label="Search creators..."', false)
+            ->assertSee('data-search-label="Search stories..."', false)
+            ->assertViewHas('records', fn ($records) => $records->total() === 1);
+    }
+
     public function test_featured_image_is_uploaded_before_save_and_path_is_owned_by_session(): void
     {
         Storage::fake('public'); config(['cloudflare.media_disk' => 'public']);

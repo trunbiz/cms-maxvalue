@@ -58,7 +58,7 @@
             <small class="text-secondary">{{ __('Leave blank to keep the current password.') }}</small>
         @endif
         @if($field==='slug')
-            <p class="form-text mb-0">{{ __($resource==='posts' && !$record->exists ? 'Generated as you type the title. You can edit it directly.' : 'Leave blank to generate from the title.') }}</p>
+            <p class="form-text mb-0">{{ __($resource==='posts' && !$record->exists ? 'Leave blank to use the default permalink settings. Enter a slug to use your own article link.' : 'Leave blank to generate from the title.') }}</p>
         @endif
     @endif
     @if($field==='seo_title')

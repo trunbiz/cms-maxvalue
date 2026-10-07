@@ -177,11 +177,11 @@ class PublishingEditorTest extends TestCase
     {
         $this->actingAs($this->admin());
         $this->get('/admin/posts/create?mode=normal')->assertOk()
-            ->assertSee('data-composer data-auto-slug', false)
+            ->assertSee('data-composer', false)->assertDontSee('data-auto-slug', false)
             ->assertDontSee('data-description-options', false)->assertDontSee('name="excerpt"', false)
             ->assertSee('data-title-slug', false)
             ->assertDontSee('data-slug-options', false)
-            ->assertSee('Generated as you type the title. You can edit it directly.')
+            ->assertSee('Leave blank to use the default permalink settings. Enter a slug to use your own article link.')
             ->assertDontSee('data-search-link', false);
         $this->withSession(['errors' => (new \Illuminate\Support\ViewErrorBag)->put('default', new \Illuminate\Support\MessageBag([
             'excerpt' => 'Invalid description', 'slug' => 'Invalid slug', 'seo_title' => 'Invalid SEO title',

@@ -15,7 +15,7 @@ use App\Services\SocialPreviewService;
 
 class ReadingController extends Controller
 {
-    private const POST_COLUMNS = ['id', 'title', 'slug', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'published_at', 'seo_title', 'seo_description', 'updated_at', 'status'];
+    private const POST_COLUMNS = ['id', 'title', 'slug', 'slug_is_custom', 'type', 'series_id', 'chapter_number', 'excerpt', 'image', 'category_id', 'published_at', 'seo_title', 'seo_description', 'updated_at', 'status'];
 
     private const SERIES_COLUMNS = ['id', 'title', 'slug', 'description', 'image', 'category_id', 'status', 'seo_title', 'seo_keywords', 'seo_description', 'updated_at'];
 
@@ -241,7 +241,7 @@ class ReadingController extends Controller
                     $emit(url('/'.$prefix.'/'.$row->slug));
                 }
             }
-            foreach (Post::select(['id', 'slug', 'type', 'series_id', 'published_at', 'created_at'])->published()->with('series')->lazyById(500) as $post) {
+            foreach (Post::select(['id', 'slug', 'slug_is_custom', 'type', 'series_id', 'published_at', 'created_at'])->published()->with('series')->lazyById(500) as $post) {
                 $emit(post_url($post));
             }
             echo '</urlset>';

@@ -33,7 +33,7 @@ class ResourceRequest extends FormRequest
                 $this->merge(['type' => 'chapter', 'series_id' => $post->series_id, 'chapter_number' => $post->chapter_number]);
             }
         }
-        if (array_key_exists('slug', config('cms.resources.'.$this->route('resource').'.fields', [])) && ! $this->filled('slug')) {
+        if ($this->route('resource') !== 'posts' && array_key_exists('slug', config('cms.resources.'.$this->route('resource').'.fields', [])) && ! $this->filled('slug')) {
             $this->merge(['slug' => Str::slug($this->input('title') ?: $this->input('name'))]);
         }
     }
@@ -51,7 +51,7 @@ class ResourceRequest extends FormRequest
         if ($r === 'posts') {
             $rules['image_path'] = 'nullable|string|max:255';
             $rules['status'] = ['required', Rule::in(['draft', 'published', 'bin'])];
-            $rules['slug'] = ['required', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?$/'];
+            $rules['slug'] = ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?$/'];
             $rules['publish_series'] = 'nullable|boolean';
             $rules['type'] = ['required', Rule::in($id ? ['normal', 'chapter'] : ['normal'])];
             $rules['chapter_number'] = $base['chapter_number'];

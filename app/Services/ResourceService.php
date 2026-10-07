@@ -61,7 +61,17 @@ class ResourceService
         if (in_array($resource, ['posts', 'series']) && !$record->exists) $data['created_by'] = $actor->id;
         if ($resource === 'posts') {
             $author = $record->created_by ? User::findOrFail($record->created_by) : $actor;
-            $data['slug'] = app(PostSlugService::class)->make($data['slug'] ?: $data['title'], $author, $record->id);
+            $slug = $data['slug'] ?? null;
+            if ($record->exists && !array_key_exists('slug', $data)) {
+                unset($data['slug']);
+            } elseif ($record->exists && $slug === $record->slug) {
+                // Saving unchanged links keeps their current permalink behavior.
+            } else {
+                $data['slug_is_custom'] = filled($slug);
+                $data['slug'] = filled($slug)
+                    ? app(SlugService::class)->unique(\App\Models\Post::class, $slug, $record->id)
+                    : app(PostSlugService::class)->make($data['title'], $author, $record->id);
+            }
         } elseif (isset($data['slug'])) {
             $data['slug'] = app(SlugService::class)->unique(get_class($record), $data['slug'], $record->id);
         }

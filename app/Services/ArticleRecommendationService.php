@@ -10,7 +10,7 @@ class ArticleRecommendationService
 {
     private function query(bool $articlesOnly = true): Builder
     {
-        return Post::select(['id', 'title', 'slug', 'type', 'series_id', 'excerpt', 'image', 'category_id', 'published_at', 'created_at'])
+        return Post::select(['id', 'title', 'slug', 'slug_is_custom', 'type', 'series_id', 'excerpt', 'image', 'category_id', 'published_at', 'created_at'])
             ->published()->when($articlesOnly, fn (Builder $query) => $query->where('type', 'normal'))->with(['category', 'series']);
     }
 

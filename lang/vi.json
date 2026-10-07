@@ -232,5 +232,10 @@
   "Publish and copy link": "Xuất bản và copy link",
   "Save and copy link": "Lưu và copy link",
   "Post name and author": "Tên bài viết và tác giả",
-  "Unable to save the article. Please try again.": "Không thể lưu bài viết. Vui lòng thử lại."
+  "Unable to save the article. Please try again.": "Không thể lưu bài viết. Vui lòng thử lại.",
+  "Leave blank to use the default permalink settings. Enter a slug to use your own article link.": "Để trống để dùng cấu hình đường dẫn mặc định. Nhập slug để dùng đường dẫn bài viết riêng.",
+  "Search categories...": "Tìm danh mục...",
+  "Search creators...": "Tìm người tạo...",
+  "Search stories...": "Tìm bộ truyện...",
+  "Chapter :number": "Chapter :number"
 }

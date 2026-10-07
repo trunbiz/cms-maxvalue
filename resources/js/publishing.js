@@ -34,19 +34,6 @@ export function initPublishing() {
         const description = form.querySelector('[name="excerpt"], [name="description"]');
         const seoTitle = form.querySelector('[name="seo_title"]');
         const seoDescription = form.querySelector('[name="seo_description"]');
-        const slug = form.querySelector('[name="slug"]');
-        if (form.hasAttribute('data-auto-slug') && title && slug) {
-            const slugify = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-            let automatic = !slug.value || slug.value === slugify(title.value);
-            const updateSlug = () => {
-                if (automatic) slug.value = title.value.trim() ? slugify(title.value) + (form.querySelector('[name="compose_mode"]:checked')?.value === 'normal' && form.dataset.author ? '/' + form.dataset.author : '') : '';
-            };
-            title.addEventListener('input', updateSlug);
-            form.querySelectorAll('[name="compose_mode"]').forEach(mode => mode.addEventListener('change', updateSlug));
-            slug.addEventListener('input', () => { automatic = !slug.value.trim(); updateSlug(); });
-            updateSlug();
-        }
         let queued = false, publishing = false;
         const showSaveMessage = (text, failed = false) => {
             const message = form.querySelector('[data-save-message]');

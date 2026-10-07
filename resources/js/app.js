@@ -18,6 +18,7 @@ if (document.querySelector('[data-menu-editor]')) import('./menu').then(({ initM
 if (document.querySelector('.admin-body')) import('./publishing').then(({ initPublishing }) => initPublishing());
 if (document.querySelector('[data-copy-link]')) import('./copy-link').then(({ initCopyLinks }) => initCopyLinks());
 if (document.querySelector('[data-permalink-settings]')) import('./permalinks').then(({ initPermalinks }) => initPermalinks());
+if (document.querySelector('[data-searchable-select]')) import('./searchable-select').then(({ initSearchableSelects }) => initSearchableSelects());
 
 const readStored = (key, fallback = {}) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
 const saveStored = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
